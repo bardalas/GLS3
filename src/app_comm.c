@@ -1,3 +1,5 @@
+#include "app.h"
+
 static float convert_raw_angle_to_degrees(uint16_t raw_angle_value)
 {
     return (((float)raw_angle_value) / RAW_ANGLE_MAX_COUNT) * RAW_ANGLE_FULL_SCALE_DEG;

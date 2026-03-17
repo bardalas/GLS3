@@ -1,3 +1,5 @@
+#include "app.h"
+
 static uint8_t calculate_battery_percentage(float voltage)
 {
     float battery_pct = (100.0f * (voltage - BATTERY_PERCENT_MIN_VOLTAGE)) / BATTERY_PERCENT_RANGE_VOLTAGE;

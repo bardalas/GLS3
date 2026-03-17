@@ -681,11 +681,6 @@ void clearBuffer(void)
     memset(pageBuffer, 0, PAGE_BUFFER_SIZE); // Set all bytes to 0 (clear buffer)
 }
 
-/* The MPLAB-generated makefile is still single-source oriented, so the
- * application layers are split physically here without changing the build flow.
- */
-#include "app_comm.c"
-#include "app_runtime.c"
 /*******************************************************************************
  End of File
 */
