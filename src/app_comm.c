@@ -1,4 +1,4 @@
-#include "app.h"
+#include "app_comm.h"
 
 static float convert_raw_angle_to_degrees(uint16_t raw_angle_value)
 {

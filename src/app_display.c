@@ -1,4 +1,4 @@
-#include "app.h"
+#include "app_display.h"
 #include "config/default/SSD13003.c"
 
 static uint8_t get_battery_level(uint8_t battery_percentage)

@@ -45,7 +45,14 @@
           <itemPath>../src/config/default/AS5048A.h</itemPath>
           <itemPath>../src/config/default/M95128.h</itemPath>
           <itemPath>../src/config/default/MAX5394.h</itemPath>
+          <itemPath>../src/app_core.h</itemPath>
           <itemPath>../src/app.h</itemPath>
+          <itemPath>../src/app_state.h</itemPath>
+          <itemPath>../src/app_display.h</itemPath>
+          <itemPath>../src/app_ballistics.h</itemPath>
+          <itemPath>../src/app_system.h</itemPath>
+          <itemPath>../src/app_input.h</itemPath>
+          <itemPath>../src/app_comm.h</itemPath>
         </logicalFolder>
       </logicalFolder>
     </logicalFolder>

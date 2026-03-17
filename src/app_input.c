@@ -1,4 +1,4 @@
-#include "app.h"
+#include "app_input.h"
 
 static void update_brightness(int16_t delta)
 {
