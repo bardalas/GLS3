@@ -62,6 +62,12 @@ char table_names[5][5] = { "xxxx\0", "xxxx\0", "xxxx\0", "xxxx\0","xxxx\0" }; //
 #define BALLISTIC_TABLE_BYTES          800U
 #define BALLISTIC_TABLE_START_PAGE     1U
 #define BALLISTIC_TABLE_PAGES_PER_TAB  5U
+#define COMM_CRC_ERROR_OPCODE          0x55U
+#define EEPROM_TEST_ADDRESS            0x0102U
+#define RAW_ANGLE_MAX_COUNT            16383.0f
+#define RAW_ANGLE_FULL_SCALE_DEG       360.0f
+#define DEBUG_SAMPLE_COUNT             100U
+#define DEBUG_SAMPLE_DELAY_MS          10U
 
 
 /* VARS */
@@ -161,6 +167,8 @@ float calibrate_angle(void);
 void sw_to_sosc(void);
 float load_cal_angle(void);
 void sw_to_posc(void);
+void configure_button_to_io(void);
+void configure_button_to_interrupt(void);
 static uint8_t calculate_battery_percentage(float voltage);
 static uint8_t get_battery_level(uint8_t battery_percentage);
 static void draw_vertical_battery_segments(uint8_t level);
@@ -171,6 +179,20 @@ static float decode_stored_angle(uint32_t stored_angle);
 static uint16_t get_ballistic_table_base_address(uint8_t selected_table);
 static void load_ballistic_table_data(uint8_t selected_table);
 static uint8_t map_large_font_character(unsigned char c);
+static float convert_raw_angle_to_degrees(uint16_t raw_angle_value);
+static void set_sleep_mode_enabled(uint8_t enabled);
+static void update_active_tables(uint8_t new_active_tables);
+static void print_all_table_names(bool include_index);
+static void print_loaded_table(void);
+static void debug_test_eeprom(void);
+static void debug_send_angle_samples(void);
+static void debug_encoder_readback(void);
+static void handle_table_name_write(char *comm);
+static char process_comm_opcode(uint8_t opcode, char *comm);
+static void wait_for_buttons_release(void);
+static bool handle_both_buttons(void);
+static void handle_button_one(void);
+static void handle_button_two(void);
 
 // *****************************************************************************
 // *****************************************************************************
@@ -414,199 +436,18 @@ void comm_isr(void)
  */
 char handle_comm(char *Comm)
 {
-  
-    unsigned char RxMsgSize,OPCODE,help;
-    uint8_t sel_table,table_row,MSB,LSB,secbyte,thirdbyte;
-    uint16_t table_range,sel_add,anghelp; 
-    uint32_t table_angle; 
-    float  angle_deg_help;
-    int helpint;
+    unsigned char RxMsgSize,OPCODE;
    
     OPCODE=*Comm++;
     RxMsgSize=(unsigned char)*Comm++ - 3;  // msgsize does not include the CRC
     
     if (CheckCRC(OPCODE, RxMsgSize, Comm)) // CRC error
     {
-        //send_byte_UART2(0x55);
-        //send_string_UART2("CRC ERROR");
-        send_ack_to_PC(0x55); // send back error
+        send_ack_to_PC(COMM_CRC_ERROR_OPCODE); // send back error
         return 0; 
     }
-    // we get to here after msg length so point is ok 
- 
-    switch (OPCODE)
-    {
-        case 0x15:   // comm ping
-            send_ack_to_PC(OPCODE);
-            break;
-        case 0x16:   // debug PING
-            send_string_UART2("PING\n");
-            break;
-        case 0x17: // debug send table value to keep in eeprom 
-            write_table_row_debug(Comm);
-            break;
-        case 0x18: // debug test eeprom
-            MSB=read_byte_eerpom(0x0102);
-            sprintf(PCDebug,"\tRead from address 0x0102:%u\n",0x00FF&MSB);send_string_UART2(PCDebug);
-            send_string_UART2("\tWriting previous val + 5...\n");
-            write_byte_eerpom(0x0102,MSB+5);
-            MSB=read_byte_eerpom(0x0102);
-            sprintf(PCDebug,"\tRead from address 0x0102:%u\n",0x00FF&MSB);send_string_UART2(PCDebug);
-            break;
-        case 0x19:  // read table 
-            sel_table=*Comm;
-            //sprintf(PCDebug,"\n\tselected table to read -> %u\n",sel_table);send_string_UART2(PCDebug);
-            send_table_to_pc(sel_table);
-            break;
-        case 0x20: // debug - read table to monitor
-            sel_table=*Comm;
-            send_table_to_pc_monitor(sel_table);
-            break;
-        case 0x21: // write table data to epprom
-            write_table_to_row(Comm);
-            send_ack_to_PC(OPCODE);
-            break;
-        case 0x22: // send back eeprom ID, accelerometer ID
-            send_info_back();
-            break;
-        case 0x23: // table x rows count -> 0x23, 0x06 table count msb count lsb CRC ->  6 bytes 
-            write_table_rows_count(Comm);
-            send_ack_to_PC(OPCODE);
-            break;
-        case 0x24: // debug: table x rows count debug
-            write_table_rows_count_debug(Comm);
-            break;
-        case 0x25 : // debug: get all tables rows count
-            read_table_rows_count_debug();
-            break;
-        case 0x26: // get table rows count (send to PC)
-            read_table_rows_count(*Comm);
-            break;
-        case 0x27: // debug - print current table 
-            for (sel_add=0;sel_add<=134;sel_add++)
-            {
-                sprintf(PCDebug,"%u,%.6f\n", table_data[sel_add].range, table_data[sel_add].angle);
-                send_string_UART2(PCDebug);
-               
-            }
-            break;
-        case 0x28: // debug - calculate range for current angle
-            sprintf(PCDebug,"\nangle: %.6f -> range: %u\n",cur_ang,interpolateRange(cur_ang));
-            send_string_UART2(PCDebug);
-            break;
-        case 0x29: // set active tables
-            active_tables=*Comm;
-            write_byte_eerpom(ACTIVE_TAB,active_tables);// save active tables to eeprom
-            // set first active table
-            table_num=find_first_active_table(); 
-            write_byte_eerpom(LAST_TABLE,table_num);
-            send_ack_to_PC(OPCODE);
-            break;
-        case 0x30: // debug - get active tables
-            sprintf(PCDebug,"\n active tables : %u\n",active_tables); send_string_UART2(PCDebug);
-            break;
-        case 0x31: // get table name -> <0x31> <0x08> <table> <char1><char2><char3><char4> <crc>
-            sel_table=*Comm++;
-            for (help=0;help<=3;help++)
-            {
-                table_names[sel_table-1][help]=*Comm; 
-                //send_byte_UART2(*Comm);
-                write_byte_eerpom((uint16_t)TAB1N+(uint16_t)(4*(sel_table-1))+(uint16_t)help,*Comm++);
-                
-            }
-            send_ack_to_PC(OPCODE);
-            break;
-        case 0x32: // debug - get table names 
-            for (help=0;help<=4;help++) // 5 tables 
-            {
-               sprintf(PCDebug,"\ttable %u name:%s\n",help+1,table_names[help]);send_string_UART2(PCDebug);
-            }
-            break;
-        case 0x33: // send to sleep, wakeup from button
-            goto_sleep();
-            break;
-        case 0x34: // toggle LCD_EN
-            send_string_UART2("\nToggling LCD enable\n");
-            LCD_EN=!LCD_EN;
-            break;
-        case 0x35: // toggle DCDC nSHDN
-            DCDC_nSHDN=!DCDC_nSHDN;
-            sprintf(PCDebug,"\nnSHDN:%u\n",DCDC_nSHDN);
-            send_string_UART2(PCDebug);
-            
-            break;
-        case 0x36: // set potentiometer
-            send_string_UART2("\nreseting and setting pot to mid range\n");
-            pot_reset();
-            pot_set_resistenace(0x7F);
-            break;
-        case 0x37: // get brightness
-            sprintf(PCDebug,"\nbrightness:%u\n",lcd_brightness);send_string_UART2(PCDebug);
-            break;
-        case 0x38: // get status of all
-            prt_stt();
-            break;
-        case 0x39: // get tables for gui
-            for (help=0;help<=4;help++) // 5 tables 
-            {
-               sprintf(PCDebug,"%s\n",table_names[help]);send_string_UART2(PCDebug);
-            }
-            break;
-        case 0x40: // zero sight
-            // add zero value here
-            calibrate_angle();
-            send_ack_to_PC(OPCODE);
-            break;
-        case 0x41: // read calibrated angle
-            sprintf(PCDebug,"\n zero angle: %.4f\n",zero_angle);send_string_UART2(PCDebug);
-            break;
-        case 0x42: // debug - send 100 samples
-            send_string_UART2("\n");
-            for (help=0;help<100;help++)
-            {
-                cur_ang=read_angle(50);
-                sprintf(PCDebug,"%.4f\n",cur_ang);send_string_UART2(PCDebug);
-                __delay_ms(10);
-            }
-            break;
-        case 0x43: // activate sleep
-            activate_sleep=1;
-            write_byte_eerpom(ACT_SLP,1);
-            sleep_timer=56000; 
-            send_ack_to_PC(OPCODE);
-            break;
-        case 0x44: // deactivate sleep
-            activate_sleep=0;
-            write_byte_eerpom(ACT_SLP,0);
-            send_ack_to_PC(OPCODE);
-            break;
-        case 0x45: // debug - spi comm 
-            send_string_UART2("kick spi\n");
-            SPI2_Initialize();
-            as5048a_spi_init_seq();
-            break;
-        case 0x46: // debug - screen font
-            send_string_UART2("sending text to display\n");
-            write_str_LCD_large_thick_font(RANGE_START_W,RANGE_START_H,"RRR");
-            __delay_ms(2000);
-            break;
-        case 0x47: // debug bat 
-            send_string_UART2("bat debug\n");
-            set_battery_display_vertical(45);
-            __delay_ms(2000);
-            break;
-        case 0x48: // debug encoder 
-            anghelp=read_one_angle();
-            angle_deg_help = ((((float)anghelp) / ((float)16383.0)) * ((float)360.0));
-            sprintf(PCDebug,"%u ; %.4f\n",anghelp,angle_deg_help);send_string_UART2(PCDebug);
-            anghelp=read_one_angle_look_for_error();
-            angle_deg_help = ((((float)anghelp) / ((float)16383.0)) * ((float)360.0));
-            sprintf(PCDebug,"%u ; %.4f\n",anghelp,angle_deg_help);send_string_UART2(PCDebug);
-            break;
-      
-     
-    }
-    return 0;
+
+    return process_comm_opcode(OPCODE, Comm);
 }
 float calibrate_angle(void)
 {
@@ -636,7 +477,7 @@ void goto_sleep(void)
     //sw_to_sosc();
     enterSleepMode();   // goto sleep     //send_string_UART2("\n>>>going to sleep<<<\n");
    //sw_to_posc();) //send_string_UART2("<<<<<WOKE UP>>>>\n");
-   configure_button_to_io();
+    configure_button_to_io();
     LCD_EN=1; 
     DCDC_nSHDN=1;
     clr_pot_sd();
@@ -697,7 +538,7 @@ void prt_stt(void)
 }
 uint8_t find_first_active_table(void)
 {
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < MAX_NUM_TABLES; i++) {
         if (active_tables & (1 << i)) {
             return (i+1);
         }
@@ -708,8 +549,8 @@ uint8_t find_next_active_table(void)
 {
     // check. let's say table_num is 1
     // so it will start from i=0 which is...1 so no good.
-    if (table_num<5) // if we don't exceed max num of tables. 
-        for (int i = table_num; i < 8; i++) 
+    if (table_num<MAX_NUM_TABLES) // if we don't exceed max num of tables. 
+        for (int i = table_num; i < MAX_NUM_TABLES; i++) 
         {
             if (active_tables & (1 << i)) {
                 return (i+1);
@@ -754,7 +595,7 @@ uint16_t interpolateRange(float targetAngle)
     if (targetAngle<table_data[0].angle)
         return 0;
     // Iterate through the data to find the interval containing targetAngle
-    for (uint8_t i = 0; i < 134; i++) {
+    for (uint8_t i = 0; i < (TABLE_SIZE - 1U); i++) {
         float angle1 = table_data[i].angle;
         float angle2 = table_data[i + 1].angle;
         
@@ -824,113 +665,343 @@ char CheckCRC(char OPCODE, unsigned char RxMsgSize,char *CheckComm)
 
     return(CSR!=*CheckComm); // 1 when CRC error
 }
+static float convert_raw_angle_to_degrees(uint16_t raw_angle_value)
+{
+    return (((float)raw_angle_value) / RAW_ANGLE_MAX_COUNT) * RAW_ANGLE_FULL_SCALE_DEG;
+}
+
+static void set_sleep_mode_enabled(uint8_t enabled)
+{
+    activate_sleep = enabled;
+    write_byte_eerpom(ACT_SLP, enabled);
+    if (enabled)
+        sleep_timer = 56000;
+}
+
+static void update_active_tables(uint8_t new_active_tables)
+{
+    active_tables = new_active_tables;
+    write_byte_eerpom(ACTIVE_TAB, active_tables);
+    table_num = find_first_active_table();
+    if ((table_num == 0U) || (table_num > MAX_NUM_TABLES))
+        table_num = 1U;
+    write_byte_eerpom(LAST_TABLE, table_num);
+}
+
+static void print_all_table_names(bool include_index)
+{
+    uint8_t help;
+
+    for (help = 0; help < MAX_NUM_TABLES; help++)
+    {
+        if (include_index)
+            sprintf(PCDebug,"\ttable %u name:%s\n",help+1,table_names[help]);
+        else
+            sprintf(PCDebug,"%s\n",table_names[help]);
+        send_string_UART2(PCDebug);
+    }
+}
+
+static void print_loaded_table(void)
+{
+    uint16_t sel_add;
+
+    for (sel_add = 0; sel_add < TABLE_SIZE; sel_add++)
+    {
+        sprintf(PCDebug,"%u,%.6f\n", table_data[sel_add].range, table_data[sel_add].angle);
+        send_string_UART2(PCDebug);
+    }
+}
+
+static void debug_test_eeprom(void)
+{
+    uint8_t msb = read_byte_eerpom(EEPROM_TEST_ADDRESS);
+
+    sprintf(PCDebug,"\tRead from address 0x0102:%u\n",0x00FF&msb);send_string_UART2(PCDebug);
+    send_string_UART2("\tWriting previous val + 5...\n");
+    write_byte_eerpom(EEPROM_TEST_ADDRESS, msb + 5U);
+    msb = read_byte_eerpom(EEPROM_TEST_ADDRESS);
+    sprintf(PCDebug,"\tRead from address 0x0102:%u\n",0x00FF&msb);send_string_UART2(PCDebug);
+}
+
+static void debug_send_angle_samples(void)
+{
+    uint8_t help;
+
+    send_string_UART2("\n");
+    for (help = 0; help < DEBUG_SAMPLE_COUNT; help++)
+    {
+        cur_ang=read_angle(50);
+        sprintf(PCDebug,"%.4f\n",cur_ang);send_string_UART2(PCDebug);
+        __delay_ms(DEBUG_SAMPLE_DELAY_MS);
+    }
+}
+
+static void debug_encoder_readback(void)
+{
+    uint16_t anghelp;
+    float angle_deg_help;
+
+    anghelp=read_one_angle();
+    angle_deg_help = convert_raw_angle_to_degrees(anghelp);
+    sprintf(PCDebug,"%u ; %.4f\n",anghelp,angle_deg_help);send_string_UART2(PCDebug);
+    anghelp=read_one_angle_look_for_error();
+    angle_deg_help = convert_raw_angle_to_degrees(anghelp);
+    sprintf(PCDebug,"%u ; %.4f\n",anghelp,angle_deg_help);send_string_UART2(PCDebug);
+}
+
+static void handle_table_name_write(char *comm)
+{
+    uint8_t sel_table = (uint8_t)*comm++;
+    uint8_t help;
+
+    if ((sel_table == 0U) || (sel_table > MAX_NUM_TABLES))
+        return;
+
+    for (help = 0; help <= 3; help++)
+    {
+        table_names[sel_table-1][help]=*comm;
+        write_byte_eerpom((uint16_t)TAB1N+(uint16_t)(4*(sel_table-1))+(uint16_t)help,*comm++);
+    }
+    table_names[sel_table-1][TABLE_NAME_TEXT_LEN - 1U] = '\0';
+}
+
+static char process_comm_opcode(uint8_t opcode, char *comm)
+{
+    switch (opcode)
+    {
+        case 0x15:
+            send_ack_to_PC(opcode);
+            break;
+        case 0x16:
+            send_string_UART2("PING\n");
+            break;
+        case 0x17:
+            write_table_row_debug(comm);
+            break;
+        case 0x18:
+            debug_test_eeprom();
+            break;
+        case 0x19:
+            send_table_to_pc((uint8_t)*comm);
+            break;
+        case 0x20:
+            send_table_to_pc_monitor((uint8_t)*comm);
+            break;
+        case 0x21:
+            write_table_to_row(comm);
+            send_ack_to_PC(opcode);
+            break;
+        case 0x22:
+            send_info_back();
+            break;
+        case 0x23:
+            write_table_rows_count(comm);
+            send_ack_to_PC(opcode);
+            break;
+        case 0x24:
+            write_table_rows_count_debug(comm);
+            break;
+        case 0x25:
+            read_table_rows_count_debug();
+            break;
+        case 0x26:
+            read_table_rows_count((uint8_t)*comm);
+            break;
+        case 0x27:
+            print_loaded_table();
+            break;
+        case 0x28:
+            sprintf(PCDebug,"\nangle: %.6f -> range: %u\n",cur_ang,interpolateRange(cur_ang));
+            send_string_UART2(PCDebug);
+            break;
+        case 0x29:
+            update_active_tables((uint8_t)*comm);
+            send_ack_to_PC(opcode);
+            break;
+        case 0x30:
+            sprintf(PCDebug,"\n active tables : %u\n",active_tables); send_string_UART2(PCDebug);
+            break;
+        case 0x31:
+            handle_table_name_write(comm);
+            send_ack_to_PC(opcode);
+            break;
+        case 0x32:
+            print_all_table_names(true);
+            break;
+        case 0x33:
+            goto_sleep();
+            break;
+        case 0x34:
+            send_string_UART2("\nToggling LCD enable\n");
+            LCD_EN=!LCD_EN;
+            break;
+        case 0x35:
+            DCDC_nSHDN=!DCDC_nSHDN;
+            sprintf(PCDebug,"\nnSHDN:%u\n",DCDC_nSHDN);
+            send_string_UART2(PCDebug);
+            break;
+        case 0x36:
+            send_string_UART2("\nreseting and setting pot to mid range\n");
+            pot_reset();
+            pot_set_resistenace(0x7F);
+            break;
+        case 0x37:
+            sprintf(PCDebug,"\nbrightness:%u\n",lcd_brightness);send_string_UART2(PCDebug);
+            break;
+        case 0x38:
+            prt_stt();
+            break;
+        case 0x39:
+            print_all_table_names(false);
+            break;
+        case 0x40:
+            calibrate_angle();
+            send_ack_to_PC(opcode);
+            break;
+        case 0x41:
+            sprintf(PCDebug,"\n zero angle: %.4f\n",zero_angle);send_string_UART2(PCDebug);
+            break;
+        case 0x42:
+            debug_send_angle_samples();
+            break;
+        case 0x43:
+            set_sleep_mode_enabled(1);
+            send_ack_to_PC(opcode);
+            break;
+        case 0x44:
+            set_sleep_mode_enabled(0);
+            send_ack_to_PC(opcode);
+            break;
+        case 0x45:
+            send_string_UART2("kick spi\n");
+            SPI2_Initialize();
+            as5048a_spi_init_seq();
+            break;
+        case 0x46:
+            send_string_UART2("sending text to display\n");
+            write_str_LCD_large_thick_font(RANGE_START_W,RANGE_START_H,"RRR");
+            __delay_ms(2000);
+            break;
+        case 0x47:
+            send_string_UART2("bat debug\n");
+            set_battery_display_vertical(45);
+            __delay_ms(2000);
+            break;
+        case 0x48:
+            debug_encoder_readback();
+            break;
+        default:
+            break;
+    }
+
+    return 0;
+}
+
+static void wait_for_buttons_release(void)
+{
+    while ((BUTTON_ONE) || (BUTTON_TWO)) {}
+}
+
+static bool handle_both_buttons(void)
+{
+    if ((BUTTON_ONE)&&(BUTTON_TWO)&&(!button_both_check))
+    {
+        button_both_check=true;
+        button_timer_both=0;
+        return false;
+    }
+    else if ((BUTTON_ONE)&&(BUTTON_TWO)&&(button_both_check)&&(button_timer_both>OFFTIME))
+    {
+        if (activate_sleep==0)
+        {
+            wait_for_buttons_release();
+            return true;
+        }
+
+        DCDC_nSHDN=0;
+        wait_for_buttons_release();
+        goto_sleep();
+#ifndef OPERATIONAL
+        send_string_UART2("turn off display\n");
+#endif
+        return true;
+    }
+    else if (((!BUTTON_ONE)||(!BUTTON_TWO))&&(button_both_check))
+    {
+        button_both_check=false;
+        return false;
+    }
+
+    return false;
+}
+
+static void handle_button_one(void)
+{
+    if ((BUTTON_ONE)&&(!button_one_check))
+    {
+        button_one_check=true;
+        sleep_timer=0;
+#ifndef OPERATIONAL
+        send_string_UART2("button 1 pushed\n");
+#endif
+        button_timer_one=0;
+    }
+    else if ((!button_one_long_press)&&(!BUTTON_ONE)&&(button_one_check)&&(button_timer_one<=SHORT_BUTTON))
+    {
+        update_brightness(BRIGHTNESS_STEP);
+        button_one_check=false;
+    }
+    else if ((BUTTON_ONE)&&(button_one_check)&&(button_timer_one>SHORT_BUTTON))
+    {
+        button_timer_one=0;
+        button_one_long_press=true;
+        sleep_timer=0;
+        load_table();
+    }
+    else if ((!BUTTON_ONE)&&(button_one_check))
+    {
+        button_one_long_press=false;
+        button_one_check=false;
+    }
+}
+
+static void handle_button_two(void)
+{
+    if ((BUTTON_TWO)&&(!button_two_check))
+    {
+        button_two_check=true;
+        sleep_timer=0;
+        button_timer_two=0;
+#ifndef OPERATIONAL
+        send_string_UART2("button 2 pushed\n");
+#endif
+    }
+    else if ((!BUTTON_TWO)&&(button_two_check)&&(button_timer_two<=SHORT_BUTTON))
+    {
+        update_brightness(-BRIGHTNESS_STEP);
+        button_two_check=false;
+    }
+    else if ((BUTTON_TWO)&&(button_two_check)&&(button_timer_two>ZERO_TIME))
+    {
+        write_str_LCD_large_font(RANGE_START_W,RANGE_START_H,"  O ");
+        button_timer_two=0;
+        button_two_check=false;
+        calibrate_angle();
+        while (BUTTON_TWO) {}
+    }
+    else if ((!BUTTON_TWO)&&(button_two_check))
+    {
+        button_two_check=false;
+    }
+}
+
 void buttons_isr(void)
 {
-        //<<<<<<<<<<<<<<<<<<< BOTH BUTTONS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        if ((BUTTON_ONE)&&(BUTTON_TWO)&&(!button_both_check))
-        {
-            button_both_check=true;
-            button_timer_both=0;
-        }
-        // long press on two buttons - send to sleep
-        else if ((BUTTON_ONE)&&(BUTTON_TWO)&&(button_both_check)&&(button_timer_both>OFFTIME)) // if both pressed already
-        {
-           
-            
-            if (activate_sleep==0)
-            {
-                while ((BUTTON_ONE)||(BUTTON_TWO)) {}// wait for buttons release
-                return;
-            }
-            else
-            {
-               DCDC_nSHDN=0; // turn off display 
-               while ((BUTTON_ONE)||(BUTTON_TWO)) {}
-               goto_sleep(); 
-            }
-            
-            //display_off=true;
-#ifndef OPERATIONAL
-            send_string_UART2("turn off display\n");
-#endif 
-        }
-        else if (((!BUTTON_ONE)||(!BUTTON_TWO))&&(button_both_check))  // one of the button released
-        {
-            button_both_check=false;
-        }
-         
-        // <<<<<<<<<<<<<<<<<<< BUTTON ONE >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        if ((BUTTON_ONE)&&(!button_one_check))
-        {
-            button_one_check=true;
-            sleep_timer=0;
-#ifndef OPERATIONAL
-            send_string_UART2("button 1 pushed\n");
-#endif      
-            
-            button_timer_one=0;
-            
-        }
-        // release button - short press
-        else if ((!button_one_long_press)&&(!BUTTON_ONE)&&(button_one_check)
-                &&(button_timer_one<=SHORT_BUTTON))
-        {
-            update_brightness(BRIGHTNESS_STEP);
-            button_one_check=false;
-             
-        }
-        // long press - load table
-        else if ((BUTTON_ONE)&&(button_one_check)&&(button_timer_one>SHORT_BUTTON))
-        {
-            //button_one_check=false;
-            button_timer_one=0;
-            button_one_long_press=true;
-            sleep_timer=0;
-            load_table();
-        }
-        else if ((!BUTTON_ONE)&&(button_one_check))
-        {
-            button_one_long_press=false; 
-            button_one_check=false; 
-        }
-   
-        // <<<<<<<<<<<<<<<<<<< BUTTON TWO >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        if ((BUTTON_TWO)&&(!button_two_check))
-        {
-            button_two_check=true;
-            sleep_timer=0;
-            button_timer_two=0;
-            
-#ifndef OPERATIONAL
-         send_string_UART2("button 2 pushed\n");
-#endif
-     
-        }
-        // short press
-        else if ((!BUTTON_TWO)&&(button_two_check)&&(button_timer_two<=SHORT_BUTTON))
-        {
-            update_brightness(-BRIGHTNESS_STEP);
-            button_two_check=false;
-        }
-        // long press - calibrate 
-        else if ((BUTTON_TWO)&&(button_two_check)&&(button_timer_two>ZERO_TIME))
-        {
-            //send_string_UART2("\nZERO PRESS\n");
-            write_str_LCD_large_font(RANGE_START_W,RANGE_START_H,"  O ");
-            button_timer_two=0;
-            button_two_check=false;
-            calibrate_angle();
-            while (BUTTON_TWO) {} // wait for button release
-        }
-        else if ((!BUTTON_TWO)&&(button_two_check))
-        {
-            //button_two_long_press=false; 
-            button_two_check=false; 
-        }
-            
-   
-           
-        
+    if (handle_both_buttons())
+        return;
+    handle_button_one();
+    handle_button_two();
 }
 void turn_off_display(void)
 {
