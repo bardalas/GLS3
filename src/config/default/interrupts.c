@@ -50,6 +50,7 @@
 // *****************************************************************************
 #include "interrupts.h"
 #include "definitions.h"
+#include "app_core.h"
 
 extern uint8_t CommAv,CommPointer,MsgSize;
 extern char PCComm[50];
@@ -98,20 +99,28 @@ void __ISR(_EXTERNAL_4_VECTOR, ipl1SRS) EXTERNAL_4_Handler (void)
 void __ISR(_UART2_RX_VECTOR, ipl1SRS) UART2_RX_Handler (void)
 {
    uint8_t Comm_data = 0;
-   char debug_buffer[10];
    Comm_data=U2RXREG; // read buffer
    if (!CommAv)
             {
                 if (CommPointer==0)  // if first char is accepted then start timer
                     CommStart=timebase;
 
-
                 if (CommPointer<=MsgSize-1)
                 {
                     if (CommPointer==1)
+                    {
                         MsgSize=(unsigned char)Comm_data;         // Update MsgSize according to received byte #2
+                        if ((MsgSize < 3U) || (MsgSize > COMM_FRAME_MAX_LEN))
+                        {
+                            CommPointer = 0U;
+                            MsgSize = 0xFF;
+                            IFS4bits.U2RXIF=0;
+                            return;
+                        }
+                    }
                                                                   // Msgsize includes all bytes - including opcode, msgsize and CRC
-                    PCComm[CommPointer]=Comm_data;                // push new char into buffer
+                    if (CommPointer < COMM_FRAME_MAX_LEN)
+                        PCComm[CommPointer]=Comm_data;            // push new char into buffer
                     //sprintf(debug_buffer,"0x%02x\n",Comm_data);send_string_UART2(debug_buffer);
                     CommPointer++;
                 }

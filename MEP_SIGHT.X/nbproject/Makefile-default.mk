@@ -51,17 +51,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED=../src/config/default/peripheral/adchs/plib_adchs.c ../src/config/default/peripheral/clk/plib_clk.c ../src/config/default/peripheral/evic/plib_evic.c ../src/config/default/peripheral/gpio/plib_gpio.c ../src/config/default/peripheral/spi/spi_master/plib_spi2_master.c ../src/config/default/peripheral/tmr/plib_tmr2.c ../src/config/default/peripheral/uart/plib_uart2.c ../src/config/default/stdio/xc32_monitor.c ../src/config/default/interrupts.c ../src/config/default/exceptions.c ../src/config/default/initialization.c ../src/app_comm.c ../src/app_state.c ../src/app_display.c ../src/app_ballistics.c ../src/app_system.c ../src/app_input.c ../src/main.c
+SOURCEFILES_QUOTED_IF_SPACED=../src/config/default/peripheral/adchs/plib_adchs.c ../src/config/default/peripheral/clk/plib_clk.c ../src/config/default/peripheral/evic/plib_evic.c ../src/config/default/peripheral/gpio/plib_gpio.c ../src/config/default/peripheral/spi/spi_master/plib_spi2_master.c ../src/config/default/peripheral/tmr/plib_tmr2.c ../src/config/default/peripheral/uart/plib_uart2.c ../src/config/default/stdio/xc32_monitor.c ../src/config/default/interrupts.c ../src/config/default/exceptions.c ../src/config/default/initialization.c ../src/app_comm.c ../src/app_state.c ../src/app_display.c ../src/app_ballistics.c ../src/app_system.c ../src/app_runtime.c ../src/app_power.c ../src/app_actions.c ../src/app_input.c ../src/main.c
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/_ext/1982400153/plib_adchs.o ${OBJECTDIR}/_ext/60165520/plib_clk.o ${OBJECTDIR}/_ext/1865200349/plib_evic.o ${OBJECTDIR}/_ext/1865254177/plib_gpio.o ${OBJECTDIR}/_ext/298189674/plib_spi2_master.o ${OBJECTDIR}/_ext/60181895/plib_tmr2.o ${OBJECTDIR}/_ext/1865657120/plib_uart2.o ${OBJECTDIR}/_ext/163028504/xc32_monitor.o ${OBJECTDIR}/_ext/1171490990/interrupts.o ${OBJECTDIR}/_ext/1171490990/exceptions.o ${OBJECTDIR}/_ext/1171490990/initialization.o ${OBJECTDIR}/_ext/1360937237/app_comm.o ${OBJECTDIR}/_ext/1360937237/app_state.o ${OBJECTDIR}/_ext/1360937237/app_display.o ${OBJECTDIR}/_ext/1360937237/app_ballistics.o ${OBJECTDIR}/_ext/1360937237/app_system.o ${OBJECTDIR}/_ext/1360937237/app_input.o ${OBJECTDIR}/_ext/1360937237/main.o
-POSSIBLE_DEPFILES=${OBJECTDIR}/_ext/1982400153/plib_adchs.o.d ${OBJECTDIR}/_ext/60165520/plib_clk.o.d ${OBJECTDIR}/_ext/1865200349/plib_evic.o.d ${OBJECTDIR}/_ext/1865254177/plib_gpio.o.d ${OBJECTDIR}/_ext/298189674/plib_spi2_master.o.d ${OBJECTDIR}/_ext/60181895/plib_tmr2.o.d ${OBJECTDIR}/_ext/1865657120/plib_uart2.o.d ${OBJECTDIR}/_ext/163028504/xc32_monitor.o.d ${OBJECTDIR}/_ext/1171490990/interrupts.o.d ${OBJECTDIR}/_ext/1171490990/exceptions.o.d ${OBJECTDIR}/_ext/1171490990/initialization.o.d ${OBJECTDIR}/_ext/1360937237/app_comm.o.d ${OBJECTDIR}/_ext/1360937237/app_state.o.d ${OBJECTDIR}/_ext/1360937237/app_display.o.d ${OBJECTDIR}/_ext/1360937237/app_ballistics.o.d ${OBJECTDIR}/_ext/1360937237/app_system.o.d ${OBJECTDIR}/_ext/1360937237/app_input.o.d ${OBJECTDIR}/_ext/1360937237/main.o.d
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/_ext/1982400153/plib_adchs.o ${OBJECTDIR}/_ext/60165520/plib_clk.o ${OBJECTDIR}/_ext/1865200349/plib_evic.o ${OBJECTDIR}/_ext/1865254177/plib_gpio.o ${OBJECTDIR}/_ext/298189674/plib_spi2_master.o ${OBJECTDIR}/_ext/60181895/plib_tmr2.o ${OBJECTDIR}/_ext/1865657120/plib_uart2.o ${OBJECTDIR}/_ext/163028504/xc32_monitor.o ${OBJECTDIR}/_ext/1171490990/interrupts.o ${OBJECTDIR}/_ext/1171490990/exceptions.o ${OBJECTDIR}/_ext/1171490990/initialization.o ${OBJECTDIR}/_ext/1360937237/app_comm.o ${OBJECTDIR}/_ext/1360937237/app_state.o ${OBJECTDIR}/_ext/1360937237/app_display.o ${OBJECTDIR}/_ext/1360937237/app_ballistics.o ${OBJECTDIR}/_ext/1360937237/app_system.o ${OBJECTDIR}/_ext/1360937237/app_runtime.o ${OBJECTDIR}/_ext/1360937237/app_power.o ${OBJECTDIR}/_ext/1360937237/app_actions.o ${OBJECTDIR}/_ext/1360937237/app_input.o ${OBJECTDIR}/_ext/1360937237/main.o
+POSSIBLE_DEPFILES=${OBJECTDIR}/_ext/1982400153/plib_adchs.o.d ${OBJECTDIR}/_ext/60165520/plib_clk.o.d ${OBJECTDIR}/_ext/1865200349/plib_evic.o.d ${OBJECTDIR}/_ext/1865254177/plib_gpio.o.d ${OBJECTDIR}/_ext/298189674/plib_spi2_master.o.d ${OBJECTDIR}/_ext/60181895/plib_tmr2.o.d ${OBJECTDIR}/_ext/1865657120/plib_uart2.o.d ${OBJECTDIR}/_ext/163028504/xc32_monitor.o.d ${OBJECTDIR}/_ext/1171490990/interrupts.o.d ${OBJECTDIR}/_ext/1171490990/exceptions.o.d ${OBJECTDIR}/_ext/1171490990/initialization.o.d ${OBJECTDIR}/_ext/1360937237/app_comm.o.d ${OBJECTDIR}/_ext/1360937237/app_state.o.d ${OBJECTDIR}/_ext/1360937237/app_display.o.d ${OBJECTDIR}/_ext/1360937237/app_ballistics.o.d ${OBJECTDIR}/_ext/1360937237/app_system.o.d ${OBJECTDIR}/_ext/1360937237/app_runtime.o.d ${OBJECTDIR}/_ext/1360937237/app_power.o.d ${OBJECTDIR}/_ext/1360937237/app_actions.o.d ${OBJECTDIR}/_ext/1360937237/app_input.o.d ${OBJECTDIR}/_ext/1360937237/main.o.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/_ext/1982400153/plib_adchs.o ${OBJECTDIR}/_ext/60165520/plib_clk.o ${OBJECTDIR}/_ext/1865200349/plib_evic.o ${OBJECTDIR}/_ext/1865254177/plib_gpio.o ${OBJECTDIR}/_ext/298189674/plib_spi2_master.o ${OBJECTDIR}/_ext/60181895/plib_tmr2.o ${OBJECTDIR}/_ext/1865657120/plib_uart2.o ${OBJECTDIR}/_ext/163028504/xc32_monitor.o ${OBJECTDIR}/_ext/1171490990/interrupts.o ${OBJECTDIR}/_ext/1171490990/exceptions.o ${OBJECTDIR}/_ext/1171490990/initialization.o ${OBJECTDIR}/_ext/1360937237/app_comm.o ${OBJECTDIR}/_ext/1360937237/app_state.o ${OBJECTDIR}/_ext/1360937237/app_display.o ${OBJECTDIR}/_ext/1360937237/app_ballistics.o ${OBJECTDIR}/_ext/1360937237/app_system.o ${OBJECTDIR}/_ext/1360937237/app_input.o ${OBJECTDIR}/_ext/1360937237/main.o
+OBJECTFILES=${OBJECTDIR}/_ext/1982400153/plib_adchs.o ${OBJECTDIR}/_ext/60165520/plib_clk.o ${OBJECTDIR}/_ext/1865200349/plib_evic.o ${OBJECTDIR}/_ext/1865254177/plib_gpio.o ${OBJECTDIR}/_ext/298189674/plib_spi2_master.o ${OBJECTDIR}/_ext/60181895/plib_tmr2.o ${OBJECTDIR}/_ext/1865657120/plib_uart2.o ${OBJECTDIR}/_ext/163028504/xc32_monitor.o ${OBJECTDIR}/_ext/1171490990/interrupts.o ${OBJECTDIR}/_ext/1171490990/exceptions.o ${OBJECTDIR}/_ext/1171490990/initialization.o ${OBJECTDIR}/_ext/1360937237/app_comm.o ${OBJECTDIR}/_ext/1360937237/app_state.o ${OBJECTDIR}/_ext/1360937237/app_display.o ${OBJECTDIR}/_ext/1360937237/app_ballistics.o ${OBJECTDIR}/_ext/1360937237/app_system.o ${OBJECTDIR}/_ext/1360937237/app_runtime.o ${OBJECTDIR}/_ext/1360937237/app_power.o ${OBJECTDIR}/_ext/1360937237/app_actions.o ${OBJECTDIR}/_ext/1360937237/app_input.o ${OBJECTDIR}/_ext/1360937237/main.o
 
 # Source Files
-SOURCEFILES=../src/config/default/peripheral/adchs/plib_adchs.c ../src/config/default/peripheral/clk/plib_clk.c ../src/config/default/peripheral/evic/plib_evic.c ../src/config/default/peripheral/gpio/plib_gpio.c ../src/config/default/peripheral/spi/spi_master/plib_spi2_master.c ../src/config/default/peripheral/tmr/plib_tmr2.c ../src/config/default/peripheral/uart/plib_uart2.c ../src/config/default/stdio/xc32_monitor.c ../src/config/default/interrupts.c ../src/config/default/exceptions.c ../src/config/default/initialization.c ../src/app_comm.c ../src/app_state.c ../src/app_display.c ../src/app_ballistics.c ../src/app_system.c ../src/app_input.c ../src/main.c
+SOURCEFILES=../src/config/default/peripheral/adchs/plib_adchs.c ../src/config/default/peripheral/clk/plib_clk.c ../src/config/default/peripheral/evic/plib_evic.c ../src/config/default/peripheral/gpio/plib_gpio.c ../src/config/default/peripheral/spi/spi_master/plib_spi2_master.c ../src/config/default/peripheral/tmr/plib_tmr2.c ../src/config/default/peripheral/uart/plib_uart2.c ../src/config/default/stdio/xc32_monitor.c ../src/config/default/interrupts.c ../src/config/default/exceptions.c ../src/config/default/initialization.c ../src/app_comm.c ../src/app_state.c ../src/app_display.c ../src/app_ballistics.c ../src/app_system.c ../src/app_runtime.c ../src/app_power.c ../src/app_actions.c ../src/app_input.c ../src/main.c
 
 
 
@@ -197,6 +197,24 @@ ${OBJECTDIR}/_ext/1360937237/app_system.o: ../src/app_system.c  .generated_files
 	@${RM} ${OBJECTDIR}/_ext/1360937237/app_system.o
 	${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG   -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION)  -ffunction-sections -fdata-sections -O1 -fno-common -I"../src" -I"../src/config/default" -Wall -MP -MMD -MF "${OBJECTDIR}/_ext/1360937237/app_system.o.d" -o ${OBJECTDIR}/_ext/1360937237/app_system.o ../src/app_system.c    -DXPRJ_default=$(CND_CONF)    $(COMPARISON_BUILD)  -mdfp="${DFP_DIR}"
 
+${OBJECTDIR}/_ext/1360937237/app_runtime.o: ../src/app_runtime.c  .generated_files/flags/default/83742464337845b9b46f09099f3c755edff53b00 .generated_files/flags/default/da39a3ee5e6b4b0d3255bfef95601890afd80709
+	@${MKDIR} "${OBJECTDIR}/_ext/1360937237"
+	@${RM} ${OBJECTDIR}/_ext/1360937237/app_runtime.o.d
+	@${RM} ${OBJECTDIR}/_ext/1360937237/app_runtime.o
+	${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG   -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION)  -ffunction-sections -fdata-sections -O1 -fno-common -I"../src" -I"../src/config/default" -Wall -MP -MMD -MF "${OBJECTDIR}/_ext/1360937237/app_runtime.o.d" -o ${OBJECTDIR}/_ext/1360937237/app_runtime.o ../src/app_runtime.c    -DXPRJ_default=$(CND_CONF)    $(COMPARISON_BUILD)  -mdfp="${DFP_DIR}"
+
+${OBJECTDIR}/_ext/1360937237/app_power.o: ../src/app_power.c  .generated_files/flags/default/83742464337845b9b46f09099f3c755edff53b00 .generated_files/flags/default/da39a3ee5e6b4b0d3255bfef95601890afd80709
+	@${MKDIR} "${OBJECTDIR}/_ext/1360937237"
+	@${RM} ${OBJECTDIR}/_ext/1360937237/app_power.o.d
+	@${RM} ${OBJECTDIR}/_ext/1360937237/app_power.o
+	${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG   -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION)  -ffunction-sections -fdata-sections -O1 -fno-common -I"../src" -I"../src/config/default" -Wall -MP -MMD -MF "${OBJECTDIR}/_ext/1360937237/app_power.o.d" -o ${OBJECTDIR}/_ext/1360937237/app_power.o ../src/app_power.c    -DXPRJ_default=$(CND_CONF)    $(COMPARISON_BUILD)  -mdfp="${DFP_DIR}"
+
+${OBJECTDIR}/_ext/1360937237/app_actions.o: ../src/app_actions.c  .generated_files/flags/default/83742464337845b9b46f09099f3c755edff53b00 .generated_files/flags/default/da39a3ee5e6b4b0d3255bfef95601890afd80709
+	@${MKDIR} "${OBJECTDIR}/_ext/1360937237"
+	@${RM} ${OBJECTDIR}/_ext/1360937237/app_actions.o.d
+	@${RM} ${OBJECTDIR}/_ext/1360937237/app_actions.o
+	${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG   -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION)  -ffunction-sections -fdata-sections -O1 -fno-common -I"../src" -I"../src/config/default" -Wall -MP -MMD -MF "${OBJECTDIR}/_ext/1360937237/app_actions.o.d" -o ${OBJECTDIR}/_ext/1360937237/app_actions.o ../src/app_actions.c    -DXPRJ_default=$(CND_CONF)    $(COMPARISON_BUILD)  -mdfp="${DFP_DIR}"
+
 ${OBJECTDIR}/_ext/1360937237/app_input.o: ../src/app_input.c  .generated_files/flags/default/83742464337845b9b46f09099f3c755edff53b00 .generated_files/flags/default/da39a3ee5e6b4b0d3255bfef95601890afd80709
 	@${MKDIR} "${OBJECTDIR}/_ext/1360937237"
 	@${RM} ${OBJECTDIR}/_ext/1360937237/app_input.o.d
@@ -305,6 +323,24 @@ ${OBJECTDIR}/_ext/1360937237/app_system.o: ../src/app_system.c  .generated_files
 	@${RM} ${OBJECTDIR}/_ext/1360937237/app_system.o.d
 	@${RM} ${OBJECTDIR}/_ext/1360937237/app_system.o
 	${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION)  -ffunction-sections -fdata-sections -O1 -fno-common -I"../src" -I"../src/config/default" -Wall -MP -MMD -MF "${OBJECTDIR}/_ext/1360937237/app_system.o.d" -o ${OBJECTDIR}/_ext/1360937237/app_system.o ../src/app_system.c    -DXPRJ_default=$(CND_CONF)    $(COMPARISON_BUILD)  -mdfp="${DFP_DIR}"
+
+${OBJECTDIR}/_ext/1360937237/app_runtime.o: ../src/app_runtime.c  .generated_files/flags/default/90d82244bdce56bcffe4716010450fb06f64fb2 .generated_files/flags/default/da39a3ee5e6b4b0d3255bfef95601890afd80709
+	@${MKDIR} "${OBJECTDIR}/_ext/1360937237"
+	@${RM} ${OBJECTDIR}/_ext/1360937237/app_runtime.o.d
+	@${RM} ${OBJECTDIR}/_ext/1360937237/app_runtime.o
+	${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION)  -ffunction-sections -fdata-sections -O1 -fno-common -I"../src" -I"../src/config/default" -Wall -MP -MMD -MF "${OBJECTDIR}/_ext/1360937237/app_runtime.o.d" -o ${OBJECTDIR}/_ext/1360937237/app_runtime.o ../src/app_runtime.c    -DXPRJ_default=$(CND_CONF)    $(COMPARISON_BUILD)  -mdfp="${DFP_DIR}"
+
+${OBJECTDIR}/_ext/1360937237/app_power.o: ../src/app_power.c  .generated_files/flags/default/90d82244bdce56bcffe4716010450fb06f64fb2 .generated_files/flags/default/da39a3ee5e6b4b0d3255bfef95601890afd80709
+	@${MKDIR} "${OBJECTDIR}/_ext/1360937237"
+	@${RM} ${OBJECTDIR}/_ext/1360937237/app_power.o.d
+	@${RM} ${OBJECTDIR}/_ext/1360937237/app_power.o
+	${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION)  -ffunction-sections -fdata-sections -O1 -fno-common -I"../src" -I"../src/config/default" -Wall -MP -MMD -MF "${OBJECTDIR}/_ext/1360937237/app_power.o.d" -o ${OBJECTDIR}/_ext/1360937237/app_power.o ../src/app_power.c    -DXPRJ_default=$(CND_CONF)    $(COMPARISON_BUILD)  -mdfp="${DFP_DIR}"
+
+${OBJECTDIR}/_ext/1360937237/app_actions.o: ../src/app_actions.c  .generated_files/flags/default/90d82244bdce56bcffe4716010450fb06f64fb2 .generated_files/flags/default/da39a3ee5e6b4b0d3255bfef95601890afd80709
+	@${MKDIR} "${OBJECTDIR}/_ext/1360937237"
+	@${RM} ${OBJECTDIR}/_ext/1360937237/app_actions.o.d
+	@${RM} ${OBJECTDIR}/_ext/1360937237/app_actions.o
+	${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION)  -ffunction-sections -fdata-sections -O1 -fno-common -I"../src" -I"../src/config/default" -Wall -MP -MMD -MF "${OBJECTDIR}/_ext/1360937237/app_actions.o.d" -o ${OBJECTDIR}/_ext/1360937237/app_actions.o ../src/app_actions.c    -DXPRJ_default=$(CND_CONF)    $(COMPARISON_BUILD)  -mdfp="${DFP_DIR}"
 
 ${OBJECTDIR}/_ext/1360937237/app_input.o: ../src/app_input.c  .generated_files/flags/default/90d82244bdce56bcffe4716010450fb06f64fb2 .generated_files/flags/default/da39a3ee5e6b4b0d3255bfef95601890afd80709
 	@${MKDIR} "${OBJECTDIR}/_ext/1360937237"

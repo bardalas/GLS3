@@ -1,6 +1,5 @@
 #include "app_ballistics.h"
-
-uint8_t find_first_active_table(void);
+#include "app_system.h"
 
 static uint32_t read_u32_from_eeprom(uint16_t address)
 {
@@ -134,16 +133,13 @@ void init_ballistic_table(void)
 
 void load_table(void)
 {
-    char cur_text[TABLE_NAME_TEXT_LEN];
-
     table_num = find_next_active_table();
     if ((table_num == 0U) || (table_num > MAX_NUM_TABLES))
         table_num = find_first_active_table();
     if ((table_num == 0U) || (table_num > MAX_NUM_TABLES))
         table_num = 1U;
 
-    sprintf(cur_text, "%s", table_names[table_num - 1U]);
-    write_str_LCD(TABLE_START_W, TABLE_START_H, cur_text);
+    write_str_LCD(TABLE_START_W, TABLE_START_H, table_names[table_num - 1U]);
     write_byte_eerpom(LAST_TABLE, table_num);
     load_ballistic_table_data(table_num);
 }

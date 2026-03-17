@@ -51,6 +51,9 @@
           <itemPath>../src/app_display.h</itemPath>
           <itemPath>../src/app_ballistics.h</itemPath>
           <itemPath>../src/app_system.h</itemPath>
+          <itemPath>../src/app_runtime.h</itemPath>
+          <itemPath>../src/app_power.h</itemPath>
+          <itemPath>../src/app_actions.h</itemPath>
           <itemPath>../src/app_input.h</itemPath>
           <itemPath>../src/app_comm.h</itemPath>
         </logicalFolder>
@@ -112,6 +115,9 @@
           <itemPath>../src/app_display.c</itemPath>
           <itemPath>../src/app_ballistics.c</itemPath>
           <itemPath>../src/app_system.c</itemPath>
+          <itemPath>../src/app_runtime.c</itemPath>
+          <itemPath>../src/app_power.c</itemPath>
+          <itemPath>../src/app_actions.c</itemPath>
           <itemPath>../src/app_input.c</itemPath>
         </logicalFolder>
       </logicalFolder>

@@ -15,9 +15,8 @@
 
 int main(void)
 {
-    /* Initialize all modules */
     SYS_Initialize(NULL);
-    all_init();
+    app_initialize();
 
 #ifndef OPERATIONAL
     send_string_UART2("\t starting main\n<><><><><><><><><><><><><><><>\n");
@@ -27,7 +26,7 @@ int main(void)
     {
         IFS3bits.CNEIF = 0;
         SYS_Tasks();
-        app_process();
+        app_run_once();
     }
 
     return EXIT_FAILURE;

@@ -1,5 +1,9 @@
 #include "app_input.h"
 
+#include "app_actions.h"
+#include "app_power.h"
+#include "app_runtime.h"
+
 static bool debounce_button(DebouncedButton *button, bool raw_level)
 {
     uint32_t now_ms = app_now_ms();
@@ -17,20 +21,6 @@ static bool debounce_button(DebouncedButton *button, bool raw_level)
     return button->stable_level;
 }
 
-static void update_brightness(int16_t delta)
-{
-    lcd_brightness += delta;
-    if (lcd_brightness > BRIGHTNESS_MAX)
-        lcd_brightness = BRIGHTNESS_MAX;
-    else if (lcd_brightness < 0)
-        lcd_brightness = 0;
-
-    SSD13003_SetBrightness((uint8_t)lcd_brightness);
-    sprintf(PCDebug, "\nbrightness:%u\n", lcd_brightness);
-    send_string_UART2(PCDebug);
-    write_byte_eerpom(BRIGHT_ADD, (uint8_t)lcd_brightness);
-}
-
 static void set_button_state(ButtonState new_state)
 {
     button_state = new_state;
@@ -41,7 +31,7 @@ static void set_button_state(ButtonState new_state)
 static void execute_deferred_button_action(void)
 {
     if (button_deferred_action == BUTTON_ACTION_SLEEP_ON_RELEASE)
-        request_sleep();
+        app_power_request_sleep();
 
     button_deferred_action = BUTTON_ACTION_NONE;
 }
@@ -78,7 +68,7 @@ static void process_button_one_state(bool button_one_pressed, bool button_two_pr
     if (!button_one_pressed)
     {
         if (!button_long_action_fired && (held_ms <= SHORT_BUTTON))
-            update_brightness(BRIGHTNESS_STEP);
+            app_action_adjust_brightness(BRIGHTNESS_STEP);
         set_button_state(BUTTON_STATE_IDLE);
         return;
     }
@@ -87,7 +77,7 @@ static void process_button_one_state(bool button_one_pressed, bool button_two_pr
     {
         button_long_action_fired = true;
         app_register_activity();
-        load_table();
+        app_action_select_next_table();
     }
 }
 
@@ -98,7 +88,7 @@ static void process_button_two_state(bool button_two_pressed)
     if (!button_two_pressed)
     {
         if (!button_long_action_fired && (held_ms <= SHORT_BUTTON))
-            update_brightness(-BRIGHTNESS_STEP);
+            app_action_adjust_brightness(-BRIGHTNESS_STEP);
         set_button_state(BUTTON_STATE_IDLE);
         return;
     }
@@ -107,8 +97,7 @@ static void process_button_two_state(bool button_two_pressed)
     {
         button_long_action_fired = true;
         app_register_activity();
-        write_str_LCD_large_font(RANGE_START_W, RANGE_START_H, "  O ");
-        calibrate_angle();
+        app_action_calibrate_zero();
         button_deferred_action = BUTTON_ACTION_IGNORE_RELEASE;
         button_state = BUTTON_STATE_WAIT_RELEASE;
     }
@@ -140,7 +129,23 @@ static void process_wait_release_state(bool button_one_pressed, bool button_two_
     }
 }
 
-void buttons_isr(void)
+void app_input_reset(void)
+{
+    button_state = BUTTON_STATE_IDLE;
+    button_deferred_action = BUTTON_ACTION_NONE;
+    button_long_action_fired = false;
+    button_state_started_ms = 0U;
+
+    button_one_debounce.raw_level = false;
+    button_one_debounce.stable_level = false;
+    button_one_debounce.transition_started_ms = 0U;
+
+    button_two_debounce.raw_level = false;
+    button_two_debounce.stable_level = false;
+    button_two_debounce.transition_started_ms = 0U;
+}
+
+void app_input_poll(void)
 {
     bool button_one_pressed = debounce_button(&button_one_debounce, (BUTTON_ONE != 0));
     bool button_two_pressed = debounce_button(&button_two_debounce, (BUTTON_TWO != 0));
@@ -166,4 +171,9 @@ void buttons_isr(void)
             set_button_state(BUTTON_STATE_IDLE);
             break;
     }
+}
+
+void buttons_isr(void)
+{
+    app_input_poll();
 }
