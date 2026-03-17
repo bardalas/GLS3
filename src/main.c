@@ -43,6 +43,26 @@ char table_names[5][5] = { "xxxx\0", "xxxx\0", "xxxx\0", "xxxx\0","xxxx\0" }; //
 #include <math.h>
 #include "config/default/MAX5394.h"
 
+#define TABLE_NAME_TEXT_LEN            5U
+#define BATTERY_PERCENT_MIN_VOLTAGE    2.4f
+#define BATTERY_PERCENT_RANGE_VOLTAGE  0.6f
+#define BATTERY_SEGMENT_EMPTY_MAX      4U
+#define BATTERY_SEGMENT_LOW_MAX        24U
+#define BATTERY_SEGMENT_MID_MAX        49U
+#define BATTERY_SEGMENT_HIGH_MAX       74U
+#define BATTERY_LEVEL_EMPTY            1U
+#define BATTERY_LEVEL_25               2U
+#define BATTERY_LEVEL_50               3U
+#define BATTERY_LEVEL_75               4U
+#define BATTERY_LEVEL_FULL             5U
+#define BRIGHTNESS_STEP                50
+#define BRIGHTNESS_MAX                 250
+#define ANGLE_STORAGE_SCALE            10000000.0f
+#define BALLISTIC_TABLE_ENTRY_SIZE     6U
+#define BALLISTIC_TABLE_BYTES          800U
+#define BALLISTIC_TABLE_START_PAGE     1U
+#define BALLISTIC_TABLE_PAGES_PER_TAB  5U
+
 
 /* VARS */
 typedef struct {
@@ -141,6 +161,16 @@ float calibrate_angle(void);
 void sw_to_sosc(void);
 float load_cal_angle(void);
 void sw_to_posc(void);
+static uint8_t calculate_battery_percentage(float voltage);
+static uint8_t get_battery_level(uint8_t battery_percentage);
+static void draw_vertical_battery_segments(uint8_t level);
+static void report_system_status(bool verbose);
+static void update_brightness(int16_t delta);
+static uint32_t read_u32_from_eeprom(uint16_t address);
+static float decode_stored_angle(uint32_t stored_angle);
+static uint16_t get_ballistic_table_base_address(uint8_t selected_table);
+static void load_ballistic_table_data(uint8_t selected_table);
+static uint8_t map_large_font_character(unsigned char c);
 
 // *****************************************************************************
 // *****************************************************************************
@@ -234,18 +264,12 @@ if (activate_sleep==0)
 void update_battery_status(void)
 {
     uint8_t bat_per;
-    float battery_pct;
     
     ADCHS_ChannelConversionStart(ADCHS_CH2);
     while(!ADCHS_ChannelResultIsReady(ADCHS_CH2)) {};
     adc_count = ADCHS_ChannelResultGet(ADCHS_CH2);  /* Read the ADC result */
     input_voltage = (float)2*(float)adc_count * (float)ADC_VREF / (float)ADC_MAX_COUNT;
-    battery_pct = (float)100*(input_voltage-2.4f)/0.6f;
-    if (battery_pct < 0.0f)
-        battery_pct = 0.0f;
-    else if (battery_pct > 100.0f)
-        battery_pct = 100.0f;
-    bat_per=(uint8_t)battery_pct;
+    bat_per = calculate_battery_percentage(input_voltage);
     set_battery_display_vertical(bat_per);
      
 }
@@ -358,18 +382,10 @@ int16_t calculate_roll(void)
 }
 void print_sr(void)
 {
-    //sprintf(PCDebug,"\tLIS WHO AM I: %u\n\r",LIS_read_register(WHO_AM_I));send_string_UART2(PCDebug);
 #ifdef OPERATIONAL
     return;
 #endif
-    sprintf(PCComm,"MEPRO: %u\n**********\n",main_cycle);send_string_UART2(PCComm);
-    sprintf(PCComm,"\tENC ANG: %.4f\n",cur_ang);send_string_UART2(PCComm);
-    sprintf(PCComm,"\tLIS WHO AM I: %u\n",LIS_read_register(WHO_AM_I));send_string_UART2(PCComm);
-    sprintf(PCComm,"\tRoll angle: %d\n",roll_angle);send_string_UART2(PCComm);
-    sprintf(PCComm,"\tEEPROM ID:%u\n",0x00FF&read_M95128_ID());send_string_UART2(PCComm);
-    sprintf(PCComm,"\tAN2 RAW:%u\n",adc_count);send_string_UART2(PCComm);
-    sprintf(PCComm,"\tBAT IN: %.4f\n",input_voltage);send_string_UART2(PCComm);
-
+    report_system_status(false);
 }
 // U2STAbits. UTXBF, OERR, URXDA, U2RXIF
 void comm_isr(void)
@@ -599,7 +615,7 @@ float calibrate_angle(void)
     // read angle
     zero_angle=read_angle_for_zero(50);
     // store in eeprom - start from MSB
-    save_cal_angle=(uint32_t)(zero_angle*(float)10000000); // its 1e8
+    save_cal_angle=(uint32_t)(zero_angle * ANGLE_STORAGE_SCALE);
     write_byte_eerpom(CAL_VALUE,(uint8_t)(save_cal_angle>>24));
     write_byte_eerpom(CAL_VALUE+1,(uint8_t)(save_cal_angle>>16));
     write_byte_eerpom(CAL_VALUE+2,(uint8_t)(save_cal_angle>>8));
@@ -677,14 +693,7 @@ void sw_to_sosc(void)
 }
 void prt_stt(void)
 {
-    sprintf(PCDebug,"MEPRO: %u\n**********\n",main_cycle);send_string_UART2(PCDebug);
-    sprintf(PCDebug,"\tENC ANG: %.4f ; raw:%u\n",cur_ang,angle_raw);send_string_UART2(PCDebug);
-    sprintf(PCDebug,"\tLIS WHO AM I: %u\n",LIS_read_register(WHO_AM_I));send_string_UART2(PCDebug);
-    sprintf(PCDebug,"\tRoll angle: %d\n",roll_angle);send_string_UART2(PCDebug);
-    sprintf(PCDebug,"\tEEPROM ID:%u\n",0x00FF&read_M95128_ID());send_string_UART2(PCDebug);
-    sprintf(PCDebug,"\tAN2 RAW:%u\n",adc_count);send_string_UART2(PCDebug);
-    sprintf(PCDebug,"\tBAT IN: %.4f\n",input_voltage);send_string_UART2(PCDebug);
-    sprintf(PCDebug,"\tBAT percentage:%u\n",(uint8_t)((float)100*(input_voltage-2.4)/((float)(0.6))));send_string_UART2(PCDebug);
+    report_system_status(true);
 }
 uint8_t find_first_active_table(void)
 {
@@ -866,15 +875,9 @@ void buttons_isr(void)
         else if ((!button_one_long_press)&&(!BUTTON_ONE)&&(button_one_check)
                 &&(button_timer_one<=SHORT_BUTTON))
         {
-            lcd_brightness+=50;         // 5 brightness levels 
-            if (lcd_brightness>=250)
-                    lcd_brightness=250;
-            sprintf(PCDebug,"\nbrightness:%u\n",lcd_brightness);send_string_UART2(PCDebug);
-            SSD13003_SetBrightness((uint8_t)lcd_brightness);
-            write_byte_eerpom(BRIGHT_ADD,(uint8_t)lcd_brightness);
-         //   pot_set_resistenace((uint8_t)lcd_brightness);
+            update_brightness(BRIGHTNESS_STEP);
             button_one_check=false;
-            
+             
         }
         // long press - load table
         else if ((BUTTON_ONE)&&(button_one_check)&&(button_timer_one>SHORT_BUTTON))
@@ -906,14 +909,7 @@ void buttons_isr(void)
         // short press
         else if ((!BUTTON_TWO)&&(button_two_check)&&(button_timer_two<=SHORT_BUTTON))
         {
-            lcd_brightness-=50;         // 5 brightness levels 
-            if (lcd_brightness<0)
-                    lcd_brightness=0;
-           
-            SSD13003_SetBrightness((uint8_t)lcd_brightness);
-            sprintf(PCDebug,"\nbrightness:%u\n",lcd_brightness);send_string_UART2(PCDebug);
-            write_byte_eerpom(BRIGHT_ADD,(uint8_t)lcd_brightness);
-        //    pot_set_resistenace((uint8_t)lcd_brightness);
+            update_brightness(-BRIGHTNESS_STEP);
             button_two_check=false;
         }
         // long press - calibrate 
@@ -980,83 +976,35 @@ void update_angle(int16_t new_angle)
 }
 void load_table(void)
 {
-    char cur_text[5];
-    uint16_t sel_add,add_ct,row_ct=0,calc_range;
-    uint32_t uint32_angle;
-    float calc_angle;
+    char cur_text[TABLE_NAME_TEXT_LEN];
     
     // old cyclic 1-5 tables 
     //table_num++;
     //if (table_num>=6)
     //         table_num=1;
     
-    // new- cycle according to active tables
-    // active_tables 0x13 (for example) -> tables 1,2,5
-    //send_string_UART2("switching to next table...\n");
     table_num=find_next_active_table();
-    //sprintf(PCDebug,"new table:%u\n",table_num);send_string_UART2(PCDebug);
     sprintf(cur_text,"%s",table_names[table_num-1]);
     write_str_LCD(TABLE_START_W,TABLE_START_H,cur_text);  
     write_byte_eerpom(LAST_TABLE,table_num);  // save to reload on next startup
-    // load table from eeprom 
-    // range,angle  -> uint16_t, float  (float should be divided by 10,000,000)
-    sel_add=(uint16_t)256*((uint16_t)1+(uint16_t)5*((uint16_t)table_num-(uint16_t)1));
-    for (add_ct=sel_add;add_ct<sel_add+800;add_ct+=6) // we load a lot each time
-    {
-        calc_range=read_byte_eerpom(add_ct)*256+read_byte_eerpom(add_ct+1);
-        uint32_angle=(((uint32_t)read_byte_eerpom(add_ct+2))<<24)|
-                     (((uint32_t)read_byte_eerpom(add_ct+3))<<16) |
-                     (((uint32_t)read_byte_eerpom(add_ct+4))<<8)|
-                     (((uint32_t)read_byte_eerpom(add_ct+5)));
-        calc_angle=uint32_angle/((float)10000000);
-        table_data[row_ct].range = calc_range;
-        table_data[row_ct].angle = calc_angle;
-        row_ct++;
-    }
-  
-    
-   
+    load_ballistic_table_data(table_num);
 }
 
 float load_cal_angle(void)
 {
-    uint32_t uint32_angle;
-    uint32_t add_ct;
-    float calc_angle;
-    
-    uint32_angle=(((uint32_t)read_byte_eerpom(CAL_VALUE))<<24)|
-                     (((uint32_t)read_byte_eerpom(CAL_VALUE+1))<<16) |
-                     (((uint32_t)read_byte_eerpom(CAL_VALUE+2))<<8)|
-                     (((uint32_t)read_byte_eerpom(CAL_VALUE+3)));
-    if (uint32_angle==0xFFFFFFFF) // if no calibraiton value is saved
+    uint32_t stored_angle = read_u32_from_eeprom(CAL_VALUE);
+
+    if (stored_angle==0xFFFFFFFF) // if no calibraiton value is saved
         return 0; // no calibration value 
-    else 
-        calc_angle=uint32_angle/((float)10000000);
     
-    return calc_angle;
+    return decode_stored_angle(stored_angle);
 }
 void init_ballistic_table(void)
 {
-    uint16_t add_ct,sel_add,row_ct=0,calc_range;
-    uint32_t uint32_angle;
-    float calc_angle;
-    //table_num=1; // <<<<<-=---save last table used and load on startup
     table_num=read_byte_eerpom(LAST_TABLE); // load last ballistic table used
     if (table_num>MAX_NUM_TABLES)
         table_num=1; // safe guard and return to default 
-    sel_add=(uint16_t)256*((uint16_t)1+(uint16_t)5*((uint16_t)table_num-(uint16_t)1));
-    for (add_ct=sel_add;add_ct<sel_add+800;add_ct+=6)
-    {
-        calc_range=read_byte_eerpom(add_ct)*256+read_byte_eerpom(add_ct+1);
-        uint32_angle=(((uint32_t)read_byte_eerpom(add_ct+2))<<24)|
-                     (((uint32_t)read_byte_eerpom(add_ct+3))<<16) |
-                     (((uint32_t)read_byte_eerpom(add_ct+4))<<8)|
-                     (((uint32_t)read_byte_eerpom(add_ct+5)));
-        calc_angle=uint32_angle/((float)10000000);
-        table_data[row_ct].range = calc_range;
-        table_data[row_ct].angle = calc_angle;
-        row_ct++; 
-    }
+    load_ballistic_table_data(table_num);
 }
     
 void clear_screen_buffer(void)
@@ -1249,54 +1197,10 @@ void set_battery_display(uint8_t bat_stat)
 }
 void set_battery_display_vertical(uint8_t bat_stat)
 {
-    
-    
     draw_rect(BAT_START_W_VER,BAT_START_H_VER,BAT_WIDTH_VER,BAT_HEIGHT_VER);
     draw_rect(BAT_START_W_VER-3,BAT_START_H_VER+2,2,2);
-    // battery levels are:
-    //      0-4 one cube
-    //      5-24
-    //      25-49
-    //      50-74
-    //      75-100
-    if ((bat_stat<=4)&&(bat_per_prev!=1))
-    {
-        clear_bat();
-        bat_per_prev=1;
-        // do nothing - empty 
-    }
-    else if ((bat_stat<=24)&&(bat_per_prev!=2)&&(bat_stat>4))
-    {
-        clear_bat();
-        bat_per_prev=2;
-        fill_rect(BAT_START_W_VER+BAT_WIDTH_VER-5,BAT_START_H_VER+2,3,3);
-    }
-    else if ((bat_stat<=49)&&(bat_per_prev!=3)&&(bat_stat>24))
-    {
-        clear_bat();
-        bat_per_prev=3;
-        fill_rect(BAT_START_W_VER+BAT_WIDTH_VER-5,BAT_START_H_VER+2,3,3);
-        fill_rect(BAT_START_W_VER+BAT_WIDTH_VER-10,BAT_START_H_VER+2,3,3);
-    }
-    else if ((bat_stat<=74)&&(bat_per_prev!=4)&&(bat_stat>49))   
-    {
-        clear_bat();
-        bat_per_prev=4;
-        fill_rect(BAT_START_W_VER+BAT_WIDTH_VER-5,BAT_START_H_VER+2,3,3);
-        fill_rect(BAT_START_W_VER+BAT_WIDTH_VER-10,BAT_START_H_VER+2,3,3);
-        fill_rect(BAT_START_W_VER+BAT_WIDTH_VER-15,BAT_START_H_VER+2,3,3);
-     
-    }
-    else if ((bat_stat>74)&&(bat_per_prev!=5))
-    {
-        clear_bat();
-        bat_per_prev=5;
-        fill_rect(BAT_START_W_VER+BAT_WIDTH_VER-5,BAT_START_H_VER+2,3,3);
-        fill_rect(BAT_START_W_VER+BAT_WIDTH_VER-10,BAT_START_H_VER+2,3,3);
-        fill_rect(BAT_START_W_VER+BAT_WIDTH_VER-15,BAT_START_H_VER+2,3,3);
-        fill_rect(BAT_START_W_VER+BAT_WIDTH_VER-20,BAT_START_H_VER+2,3,3);
-    }
-        
+
+    draw_vertical_battery_segments(get_battery_level(bat_stat));
 }
 void __delay_ms(uint32_t ms)
 {
@@ -1563,29 +1467,8 @@ void write_str_LCD_large_thick_font(uint8_t x, uint8_t y, char *str)
 void OLED13003_DrawChar_revc(uint8_t x, uint8_t y, unsigned char c)
 {
     uint8_t t,k,letter_index;
-    
-    if (c==109) // if 'm'
-        letter_index=10;
-    else if (c==72)  // if 'H'
-        letter_index=11;
-    else if (c==73)  // if 'I'
-        letter_index=12;
-    else if (c==69)  // if 'E' 
-        letter_index=13;
-    else if (c==82)  // if 'R' 
-        letter_index=14;
-    else if (c==32)  // if space
-        letter_index=15;
-    else if (c==76)   // 'L' 
-        letter_index=16;
-    else if (c==79)   // 'O'
-        letter_index=17;
-    else if (c==87)   // 'W'
-        letter_index=18;
-    else
-        letter_index=c-48;
 
-    //sprintf(PCComm,"letter index:%u\n",letter_index);send_string_UART2(PCComm);
+    letter_index = map_large_font_character(c);
     for (t=x;t<=(x+LARGE_CHAR_W-1);t++)   // from 0 to 9 
         for (k=y;k<=(y+LARGE_CHAR_H-1);k++) // from 0 to 13
             if (large_thick_font[letter_index][k-y][t-x])
@@ -1597,29 +1480,8 @@ void OLED13003_DrawChar_revc(uint8_t x, uint8_t y, unsigned char c)
 void OLED13003_DrawChar_revb(uint8_t x, uint8_t y, unsigned char c)
 {
     uint8_t t,k,letter_index;
-    
-    if (c==109) // if 'm'
-        letter_index=10;
-    else if (c==72)  // if 'H'
-        letter_index=11;
-    else if (c==73)  // if 'I'
-        letter_index=12;
-    else if (c==69)  // if 'E' 
-        letter_index=13;
-    else if (c==82)  // if 'R' 
-        letter_index=14;
-    else if (c==32)  // if space
-        letter_index=15;
-    else if (c==76)   // 'L' 
-        letter_index=16;
-    else if (c==79)   // 'O'
-        letter_index=17;
-    else if (c==87)   // 'W'
-        letter_index=18;
-    else
-        letter_index=c-48;
 
-    //sprintf(PCComm,"letter index:%u\n",letter_index);send_string_UART2(PCComm);
+    letter_index = map_large_font_character(c);
     for (t=x;t<=(x+LARGE_CHAR_W-1);t++)   // from 0 to 9 
         for (k=y;k<=(y+LARGE_CHAR_H-1);k++) // from 0 to 13
             if (large_font[letter_index][k-y][t-x])
@@ -1676,6 +1538,132 @@ void SSD13003_ClearDisplay(void)
 void clearBuffer(void) 
 {
     memset(pageBuffer, 0, PAGE_BUFFER_SIZE); // Set all bytes to 0 (clear buffer)
+}
+
+static uint8_t calculate_battery_percentage(float voltage)
+{
+    float battery_pct = (100.0f * (voltage - BATTERY_PERCENT_MIN_VOLTAGE)) / BATTERY_PERCENT_RANGE_VOLTAGE;
+
+    if (battery_pct < 0.0f)
+        battery_pct = 0.0f;
+    else if (battery_pct > 100.0f)
+        battery_pct = 100.0f;
+
+    return (uint8_t)battery_pct;
+}
+
+static uint8_t get_battery_level(uint8_t battery_percentage)
+{
+    if (battery_percentage <= BATTERY_SEGMENT_EMPTY_MAX)
+        return BATTERY_LEVEL_EMPTY;
+    if (battery_percentage <= BATTERY_SEGMENT_LOW_MAX)
+        return BATTERY_LEVEL_25;
+    if (battery_percentage <= BATTERY_SEGMENT_MID_MAX)
+        return BATTERY_LEVEL_50;
+    if (battery_percentage <= BATTERY_SEGMENT_HIGH_MAX)
+        return BATTERY_LEVEL_75;
+
+    return BATTERY_LEVEL_FULL;
+}
+
+static void draw_vertical_battery_segments(uint8_t level)
+{
+    if (bat_per_prev == level)
+        return;
+
+    clear_bat();
+    bat_per_prev = level;
+
+    if (level >= BATTERY_LEVEL_25)
+        fill_rect(BAT_START_W_VER+BAT_WIDTH_VER-5,BAT_START_H_VER+2,3,3);
+    if (level >= BATTERY_LEVEL_50)
+        fill_rect(BAT_START_W_VER+BAT_WIDTH_VER-10,BAT_START_H_VER+2,3,3);
+    if (level >= BATTERY_LEVEL_75)
+        fill_rect(BAT_START_W_VER+BAT_WIDTH_VER-15,BAT_START_H_VER+2,3,3);
+    if (level >= BATTERY_LEVEL_FULL)
+        fill_rect(BAT_START_W_VER+BAT_WIDTH_VER-20,BAT_START_H_VER+2,3,3);
+}
+
+static void report_system_status(bool verbose)
+{
+    sprintf(PCDebug,"MEPRO: %u\n**********\n",main_cycle);send_string_UART2(PCDebug);
+    if (verbose)
+        sprintf(PCDebug,"\tENC ANG: %.4f ; raw:%u\n",cur_ang,angle_raw);
+    else
+        sprintf(PCDebug,"\tENC ANG: %.4f\n",cur_ang);
+    send_string_UART2(PCDebug);
+    sprintf(PCDebug,"\tLIS WHO AM I: %u\n",LIS_read_register(WHO_AM_I));send_string_UART2(PCDebug);
+    sprintf(PCDebug,"\tRoll angle: %d\n",roll_angle);send_string_UART2(PCDebug);
+    sprintf(PCDebug,"\tEEPROM ID:%u\n",0x00FF&read_M95128_ID());send_string_UART2(PCDebug);
+    sprintf(PCDebug,"\tAN2 RAW:%u\n",adc_count);send_string_UART2(PCDebug);
+    sprintf(PCDebug,"\tBAT IN: %.4f\n",input_voltage);send_string_UART2(PCDebug);
+    if (verbose)
+    {
+        sprintf(PCDebug,"\tBAT percentage:%u\n",calculate_battery_percentage(input_voltage));
+        send_string_UART2(PCDebug);
+    }
+}
+
+static void update_brightness(int16_t delta)
+{
+    lcd_brightness += delta;
+    if (lcd_brightness > BRIGHTNESS_MAX)
+        lcd_brightness = BRIGHTNESS_MAX;
+    else if (lcd_brightness < 0)
+        lcd_brightness = 0;
+
+    SSD13003_SetBrightness((uint8_t)lcd_brightness);
+    sprintf(PCDebug,"\nbrightness:%u\n",lcd_brightness);send_string_UART2(PCDebug);
+    write_byte_eerpom(BRIGHT_ADD,(uint8_t)lcd_brightness);
+}
+
+static uint32_t read_u32_from_eeprom(uint16_t address)
+{
+    return (((uint32_t)read_byte_eerpom(address)) << 24) |
+           (((uint32_t)read_byte_eerpom(address + 1U)) << 16) |
+           (((uint32_t)read_byte_eerpom(address + 2U)) << 8) |
+           ((uint32_t)read_byte_eerpom(address + 3U));
+}
+
+static float decode_stored_angle(uint32_t stored_angle)
+{
+    return ((float)stored_angle) / ANGLE_STORAGE_SCALE;
+}
+
+static uint16_t get_ballistic_table_base_address(uint8_t selected_table)
+{
+    return (uint16_t)256U * (BALLISTIC_TABLE_START_PAGE + (BALLISTIC_TABLE_PAGES_PER_TAB * ((uint16_t)selected_table - 1U)));
+}
+
+static void load_ballistic_table_data(uint8_t selected_table)
+{
+    uint16_t table_address = get_ballistic_table_base_address(selected_table);
+    uint16_t row_ct = 0;
+    uint16_t add_ct;
+
+    for (add_ct = table_address; add_ct < (table_address + BALLISTIC_TABLE_BYTES); add_ct += BALLISTIC_TABLE_ENTRY_SIZE)
+    {
+        table_data[row_ct].range = (uint16_t)read_byte_eerpom(add_ct) * 256U + read_byte_eerpom(add_ct + 1U);
+        table_data[row_ct].angle = decode_stored_angle(read_u32_from_eeprom(add_ct + 2U));
+        row_ct++;
+    }
+}
+
+static uint8_t map_large_font_character(unsigned char c)
+{
+    switch (c)
+    {
+        case 'm': return 10;
+        case 'H': return 11;
+        case 'I': return 12;
+        case 'E': return 13;
+        case 'R': return 14;
+        case ' ': return 15;
+        case 'L': return 16;
+        case 'O': return 17;
+        case 'W': return 18;
+        default: return (uint8_t)(c - '0');
+    }
 }
 /*******************************************************************************
  End of File
