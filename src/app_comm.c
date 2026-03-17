@@ -21,6 +21,8 @@ static void update_active_tables(uint8_t new_active_tables)
     if ((table_num == 0U) || (table_num > MAX_NUM_TABLES))
         table_num = 1U;
     write_byte_eerpom(LAST_TABLE, table_num);
+    init_ballistic_table();
+    write_str_LCD(TABLE_START_W, TABLE_START_H, table_names[table_num - 1U]);
 }
 
 static void print_all_table_names(bool include_index)
@@ -99,6 +101,9 @@ static void handle_table_name_write(char *comm)
         write_byte_eerpom((uint16_t)TAB1N + (uint16_t)(4 * (sel_table - 1U)) + (uint16_t)help, *comm++);
     }
     table_names[sel_table-1][TABLE_NAME_TEXT_LEN - 1U] = '\0';
+
+    if (sel_table == table_num)
+        write_str_LCD(TABLE_START_W, TABLE_START_H, table_names[sel_table - 1U]);
 }
 
 static char process_comm_opcode(uint8_t opcode, char *comm)
