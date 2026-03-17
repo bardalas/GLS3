@@ -9,8 +9,7 @@ static void set_sleep_mode_enabled(uint8_t enabled)
 {
     activate_sleep = enabled;
     write_byte_eerpom(ACT_SLP, enabled);
-    if (enabled)
-        sleep_timer = 56000;
+    app_register_activity();
 }
 
 static void update_active_tables(uint8_t new_active_tables)
@@ -245,7 +244,7 @@ void comm_isr(void)
 
     if (CommAv)
     {
-        sleep_timer = 0;
+        app_register_activity();
         handle_comm(PCComm);
         CommAv = 0;
         CommPointer = 0;

@@ -514,12 +514,6 @@ void update_angle(int16_t new_angle)
 {
     uint8_t rollnow;
 
-    if (LIS_read_register(WHO_AM_I) != 0x33U)
-    {
-        clear_roll();
-        return;
-    }
-
     rollnow = determine_roll_state(new_angle);
     if (rollnow != roll_state)
     {
@@ -537,4 +531,10 @@ void update_angle(int16_t new_angle)
 
     if (roll_state >= 7U)
         draw_roll(new_angle);
+}
+
+void process_display_animations(void)
+{
+    if (roll_state >= 7U)
+        draw_roll(roll_angle);
 }

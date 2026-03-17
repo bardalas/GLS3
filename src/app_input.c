@@ -14,118 +14,139 @@ static void update_brightness(int16_t delta)
     write_byte_eerpom(BRIGHT_ADD, (uint8_t)lcd_brightness);
 }
 
-static void wait_for_buttons_release(void)
+static void set_button_state(ButtonState new_state)
 {
-    while (BUTTON_ONE || BUTTON_TWO) {}
+    button_state = new_state;
+    button_state_started_ms = app_now_ms();
+    button_long_action_fired = false;
 }
 
-static bool handle_both_buttons(void)
+static void execute_deferred_button_action(void)
 {
-    if (BUTTON_ONE && BUTTON_TWO && !button_both_check)
-    {
-        button_both_check = true;
-        button_timer_both = 0;
-        return false;
-    }
+    if (button_deferred_action == BUTTON_ACTION_SLEEP_ON_RELEASE)
+        request_sleep();
 
-    if (BUTTON_ONE && BUTTON_TWO && button_both_check && (button_timer_both > OFFTIME))
-    {
-        if (activate_sleep == 0U)
-        {
-            wait_for_buttons_release();
-            return true;
-        }
-
-        DCDC_nSHDN = 0;
-        wait_for_buttons_release();
-        goto_sleep();
-#ifndef OPERATIONAL
-        send_string_UART2("turn off display\n");
-#endif
-        return true;
-    }
-
-    if ((!BUTTON_ONE || !BUTTON_TWO) && button_both_check)
-        button_both_check = false;
-
-    return false;
+    button_deferred_action = BUTTON_ACTION_NONE;
 }
 
-static void handle_button_one(void)
+static void process_idle_state(bool button_one_pressed, bool button_two_pressed)
 {
-    if (BUTTON_ONE && !button_one_check)
+    if (button_one_pressed && button_two_pressed)
     {
-        button_one_check = true;
-        sleep_timer = 0;
-        button_timer_one = 0;
-#ifndef OPERATIONAL
-        send_string_UART2("button 1 pushed\n");
-#endif
+        app_register_activity();
+        set_button_state(BUTTON_STATE_BOTH_PRESSED);
+    }
+    else if (button_one_pressed)
+    {
+        app_register_activity();
+        set_button_state(BUTTON_STATE_ONE_PRESSED);
+    }
+    else if (button_two_pressed)
+    {
+        app_register_activity();
+        set_button_state(BUTTON_STATE_TWO_PRESSED);
+    }
+}
+
+static void process_button_one_state(bool button_one_pressed, bool button_two_pressed)
+{
+    uint32_t held_ms = app_now_ms() - button_state_started_ms;
+
+    if (button_one_pressed && button_two_pressed)
+    {
+        set_button_state(BUTTON_STATE_BOTH_PRESSED);
         return;
     }
 
-    if (!button_one_long_press && !BUTTON_ONE && button_one_check && (button_timer_one <= SHORT_BUTTON))
+    if (!button_one_pressed)
     {
-        update_brightness(BRIGHTNESS_STEP);
-        button_one_check = false;
+        if (!button_long_action_fired && (held_ms <= SHORT_BUTTON))
+            update_brightness(BRIGHTNESS_STEP);
+        set_button_state(BUTTON_STATE_IDLE);
         return;
     }
 
-    if (BUTTON_ONE && button_one_check && (button_timer_one > SHORT_BUTTON))
+    if (!button_long_action_fired && (held_ms >= SHORT_BUTTON))
     {
-        button_timer_one = 0;
-        button_one_long_press = true;
-        sleep_timer = 0;
+        button_long_action_fired = true;
+        app_register_activity();
         load_table();
-        return;
-    }
-
-    if (!BUTTON_ONE && button_one_check)
-    {
-        button_one_long_press = false;
-        button_one_check = false;
     }
 }
 
-static void handle_button_two(void)
+static void process_button_two_state(bool button_two_pressed)
 {
-    if (BUTTON_TWO && !button_two_check)
+    uint32_t held_ms = app_now_ms() - button_state_started_ms;
+
+    if (!button_two_pressed)
     {
-        button_two_check = true;
-        sleep_timer = 0;
-        button_timer_two = 0;
-#ifndef OPERATIONAL
-        send_string_UART2("button 2 pushed\n");
-#endif
+        if (!button_long_action_fired && (held_ms <= SHORT_BUTTON))
+            update_brightness(-BRIGHTNESS_STEP);
+        set_button_state(BUTTON_STATE_IDLE);
         return;
     }
 
-    if (!BUTTON_TWO && button_two_check && (button_timer_two <= SHORT_BUTTON))
+    if (!button_long_action_fired && (held_ms >= ZERO_TIME))
     {
-        update_brightness(-BRIGHTNESS_STEP);
-        button_two_check = false;
-        return;
-    }
-
-    if (BUTTON_TWO && button_two_check && (button_timer_two > ZERO_TIME))
-    {
+        button_long_action_fired = true;
+        app_register_activity();
         write_str_LCD_large_font(RANGE_START_W, RANGE_START_H, "  O ");
-        button_timer_two = 0;
-        button_two_check = false;
         calibrate_angle();
-        while (BUTTON_TWO) {}
+        button_deferred_action = BUTTON_ACTION_IGNORE_RELEASE;
+        button_state = BUTTON_STATE_WAIT_RELEASE;
+    }
+}
+
+static void process_both_buttons_state(bool button_one_pressed, bool button_two_pressed)
+{
+    uint32_t held_ms = app_now_ms() - button_state_started_ms;
+
+    if (!(button_one_pressed && button_two_pressed))
+    {
+        set_button_state(BUTTON_STATE_IDLE);
         return;
     }
 
-    if (!BUTTON_TWO && button_two_check)
-        button_two_check = false;
+    if (held_ms >= OFFTIME)
+    {
+        button_deferred_action = (activate_sleep != 0U) ? BUTTON_ACTION_SLEEP_ON_RELEASE : BUTTON_ACTION_IGNORE_RELEASE;
+        button_state = BUTTON_STATE_WAIT_RELEASE;
+    }
+}
+
+static void process_wait_release_state(bool button_one_pressed, bool button_two_pressed)
+{
+    if (!button_one_pressed && !button_two_pressed)
+    {
+        execute_deferred_button_action();
+        set_button_state(BUTTON_STATE_IDLE);
+    }
 }
 
 void buttons_isr(void)
 {
-    if (handle_both_buttons())
-        return;
+    bool button_one_pressed = (BUTTON_ONE != 0);
+    bool button_two_pressed = (BUTTON_TWO != 0);
 
-    handle_button_one();
-    handle_button_two();
+    switch (button_state)
+    {
+        case BUTTON_STATE_IDLE:
+            process_idle_state(button_one_pressed, button_two_pressed);
+            break;
+        case BUTTON_STATE_ONE_PRESSED:
+            process_button_one_state(button_one_pressed, button_two_pressed);
+            break;
+        case BUTTON_STATE_TWO_PRESSED:
+            process_button_two_state(button_two_pressed);
+            break;
+        case BUTTON_STATE_BOTH_PRESSED:
+            process_both_buttons_state(button_one_pressed, button_two_pressed);
+            break;
+        case BUTTON_STATE_WAIT_RELEASE:
+            process_wait_release_state(button_one_pressed, button_two_pressed);
+            break;
+        default:
+            set_button_state(BUTTON_STATE_IDLE);
+            break;
+    }
 }

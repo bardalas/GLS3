@@ -13,18 +13,6 @@
 
 #include "app.h"
 
-static void sample_sensors_and_refresh_ui(void)
-{
-    update_battery_status();
-    cur_ang = read_angle(50);
-    update_range();
-    roll_angle = calculate_roll();
-    update_angle(roll_angle);
-    buttons_isr();
-    sampletime = 0;
-    main_cycle++;
-}
-
 int main(void)
 {
     /* Initialize all modules */
@@ -39,25 +27,7 @@ int main(void)
     {
         IFS3bits.CNEIF = 0;
         SYS_Tasks();
-
-#ifdef FORRONEN
-        __delay_ms(40);
-#else
-        __delay_ms(1);
-        increment_loop_timers();
-        comm_isr();
-
-        if (sampletime > 100U)
-            sample_sensors_and_refresh_ui();
-
-        check_sleep_cycle();
-
-        if (printtime >= 500U)
-        {
-            print_sr();
-            printtime = 0;
-        }
-#endif
+        app_process();
     }
 
     return EXIT_FAILURE;

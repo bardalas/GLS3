@@ -1,5 +1,7 @@
 #include "app_ballistics.h"
 
+uint8_t find_first_active_table(void);
+
 static uint32_t read_u32_from_eeprom(uint16_t address)
 {
     return (((uint32_t)read_byte_eerpom(address)) << 24) |
@@ -23,13 +25,27 @@ static void load_ballistic_table_data(uint8_t selected_table)
     uint16_t table_address = get_ballistic_table_base_address(selected_table);
     uint16_t row_ct = 0;
     uint16_t add_ct;
+    float previous_angle = -1.0f;
+
+    loaded_table_rows = 0U;
+    ballistic_table_valid = false;
 
     for (add_ct = table_address; add_ct < (uint16_t)(table_address + BALLISTIC_TABLE_BYTES); add_ct += BALLISTIC_TABLE_ENTRY_SIZE)
     {
-        table_data[row_ct].range = (uint16_t)((uint16_t)read_byte_eerpom(add_ct) * 256U + read_byte_eerpom(add_ct + 1U));
-        table_data[row_ct].angle = decode_stored_angle(read_u32_from_eeprom((uint16_t)(add_ct + 2U)));
+        uint16_t range = (uint16_t)((uint16_t)read_byte_eerpom(add_ct) * 256U + read_byte_eerpom(add_ct + 1U));
+        float angle = decode_stored_angle(read_u32_from_eeprom((uint16_t)(add_ct + 2U)));
+
+        if ((!isfinite(angle)) || (angle < 0.0f) || (angle > 300.0f) || ((row_ct > 0U) && (angle <= previous_angle)))
+            break;
+
+        table_data[row_ct].range = range;
+        table_data[row_ct].angle = angle;
+        previous_angle = angle;
         row_ct++;
     }
+
+    loaded_table_rows = row_ct;
+    ballistic_table_valid = (loaded_table_rows >= 2U);
 }
 
 uint16_t roundToNearest5(uint16_t value)
@@ -41,15 +57,21 @@ uint16_t interpolateRange(float targetAngle)
 {
     uint8_t i;
 
+    if (!ballistic_table_valid)
+        return 0xFFFFU;
+
     if (targetAngle < table_data[0].angle)
         return 0U;
 
-    for (i = 0; i < (TABLE_SIZE - 1U); i++)
+    if (targetAngle > table_data[loaded_table_rows - 1U].angle)
+        return 0xFFFFU;
+
+    for (i = 0; i < (loaded_table_rows - 1U); i++)
     {
         float angle1 = table_data[i].angle;
         float angle2 = table_data[i + 1U].angle;
 
-        if ((targetAngle >= angle1) && (targetAngle <= angle2) && (angle2 <= 300.0f))
+        if ((targetAngle >= angle1) && (targetAngle <= angle2) && (angle2 > angle1))
         {
             float range1 = (float)table_data[i].range;
             float range2 = (float)table_data[i + 1U].range;
@@ -63,6 +85,7 @@ uint16_t interpolateRange(float targetAngle)
 
 void update_range(void)
 {
+    static char last_range_text[5] = "";
     char cur_text[5];
     uint16_t cur_range = interpolateRange(cur_ang);
 
@@ -78,7 +101,11 @@ void update_range(void)
     else
         sprintf(cur_text, "%um", cur_range);
 
-    write_str_LCD_large_font(RANGE_START_W, RANGE_START_H, cur_text);
+    if (strcmp(last_range_text, cur_text) != 0)
+    {
+        strcpy(last_range_text, cur_text);
+        write_str_LCD_large_font(RANGE_START_W, RANGE_START_H, cur_text);
+    }
 }
 
 float load_cal_angle(void)
@@ -93,10 +120,15 @@ float load_cal_angle(void)
 
 void init_ballistic_table(void)
 {
-    table_num = read_byte_eerpom(LAST_TABLE);
+    uint8_t stored_table = read_byte_eerpom(LAST_TABLE);
+
+    table_num = stored_table;
+    if ((table_num == 0U) || (table_num > MAX_NUM_TABLES) || ((active_tables != 0U) && ((active_tables & (1U << (table_num - 1U))) == 0U)))
+        table_num = find_first_active_table();
     if ((table_num == 0U) || (table_num > MAX_NUM_TABLES))
         table_num = 1U;
 
+    write_byte_eerpom(LAST_TABLE, table_num);
     load_ballistic_table_data(table_num);
 }
 
@@ -114,4 +146,9 @@ void load_table(void)
     write_str_LCD(TABLE_START_W, TABLE_START_H, cur_text);
     write_byte_eerpom(LAST_TABLE, table_num);
     load_ballistic_table_data(table_num);
+}
+
+bool is_ballistic_table_ready(void)
+{
+    return ballistic_table_valid;
 }

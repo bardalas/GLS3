@@ -3,6 +3,27 @@
 
 #include "app_core.h"
 
+typedef enum {
+    POWER_STATE_ACTIVE = 0,
+    POWER_STATE_PREPARE_SLEEP,
+    POWER_STATE_SLEEPING,
+    POWER_STATE_RESTORE
+} PowerState;
+
+typedef enum {
+    BUTTON_STATE_IDLE = 0,
+    BUTTON_STATE_ONE_PRESSED,
+    BUTTON_STATE_TWO_PRESSED,
+    BUTTON_STATE_BOTH_PRESSED,
+    BUTTON_STATE_WAIT_RELEASE
+} ButtonState;
+
+typedef enum {
+    BUTTON_ACTION_NONE = 0,
+    BUTTON_ACTION_IGNORE_RELEASE,
+    BUTTON_ACTION_SLEEP_ON_RELEASE
+} ButtonDeferredAction;
+
 extern char PCComm[50];
 extern char PCDebug[50];
 extern char table_names[5][5];
@@ -52,5 +73,20 @@ extern uint8_t blink_roll;
 extern int16_t roll_angle;
 extern int16_t main_cycle;
 extern bool show_clear_flag;
+extern uint32_t system_time_ms;
+extern uint32_t last_tick_count;
+extern uint32_t tick_accumulator;
+extern uint32_t last_sample_ms;
+extern uint32_t last_status_ms;
+extern uint32_t last_button_scan_ms;
+extern uint32_t last_roll_animation_ms;
+extern uint32_t button_state_started_ms;
+extern uint32_t loaded_table_rows;
+extern bool ballistic_table_valid;
+extern PowerState power_state;
+extern bool sleep_request_pending;
+extern ButtonState button_state;
+extern ButtonDeferredAction button_deferred_action;
+extern bool button_long_action_fired;
 
 #endif

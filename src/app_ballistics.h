@@ -9,5 +9,6 @@ uint16_t interpolateRange(float targetAngle);
 void update_range(void);
 uint16_t roundToNearest5(uint16_t value);
 float load_cal_angle(void);
+bool is_ballistic_table_ready(void);
 
 #endif

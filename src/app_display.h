@@ -38,5 +38,6 @@ void OLED13003_DrawChar_revb(uint8_t x, uint8_t y, unsigned char c);
 void load_screen_buffer_to_display(void);
 void write_str_LCD_large_thick_font(uint8_t x, uint8_t y, char *str);
 void OLED13003_DrawChar_revc(uint8_t x, uint8_t y, unsigned char c);
+void process_display_animations(void);
 
 #endif
