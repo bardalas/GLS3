@@ -46,6 +46,9 @@
 #define RAW_ANGLE_FULL_SCALE_DEG       360.0f
 #define DEBUG_SAMPLE_COUNT             100U
 #define DEBUG_SAMPLE_DELAY_MS          10U
+#define BUTTON_DEBOUNCE_MS            30U
+#define COMM_QUEUE_DEPTH               4U
+#define COMM_FRAME_MAX_LEN            50U
 
 typedef struct {
     uint16_t range;

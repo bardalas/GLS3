@@ -1,5 +1,22 @@
 #include "app_input.h"
 
+static bool debounce_button(DebouncedButton *button, bool raw_level)
+{
+    uint32_t now_ms = app_now_ms();
+
+    if (raw_level != button->raw_level)
+    {
+        button->raw_level = raw_level;
+        button->transition_started_ms = now_ms;
+    }
+    else if ((button->stable_level != raw_level) && ((now_ms - button->transition_started_ms) >= BUTTON_DEBOUNCE_MS))
+    {
+        button->stable_level = raw_level;
+    }
+
+    return button->stable_level;
+}
+
 static void update_brightness(int16_t delta)
 {
     lcd_brightness += delta;
@@ -125,8 +142,8 @@ static void process_wait_release_state(bool button_one_pressed, bool button_two_
 
 void buttons_isr(void)
 {
-    bool button_one_pressed = (BUTTON_ONE != 0);
-    bool button_two_pressed = (BUTTON_TWO != 0);
+    bool button_one_pressed = debounce_button(&button_one_debounce, (BUTTON_ONE != 0));
+    bool button_two_pressed = debounce_button(&button_two_debounce, (BUTTON_TWO != 0));
 
     switch (button_state)
     {

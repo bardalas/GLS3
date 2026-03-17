@@ -9,6 +9,7 @@ void app_process(void);
 uint32_t app_now_ms(void);
 void app_register_activity(void);
 void request_sleep(void);
+void restore_runtime_state(void);
 void __delay_ms(uint32_t ms);
 void __delay_us(uint32_t us);
 void print_sr(void);

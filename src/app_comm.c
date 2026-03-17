@@ -1,5 +1,75 @@
 #include "app_comm.h"
 
+static bool comm_queue_push(const char *frame, uint8_t frame_size)
+{
+    if ((frame_size == 0U) || (frame_size > COMM_FRAME_MAX_LEN))
+        return false;
+
+    if (comm_queue_count >= COMM_QUEUE_DEPTH)
+    {
+        comm_queue_overflow = true;
+        return false;
+    }
+
+    memcpy(comm_queue[comm_queue_tail], frame, frame_size);
+    comm_queue_sizes[comm_queue_tail] = frame_size;
+    comm_queue_tail = (uint8_t)((comm_queue_tail + 1U) % COMM_QUEUE_DEPTH);
+    comm_queue_count++;
+    return true;
+}
+
+static bool comm_queue_pop(char *frame_out, uint8_t *frame_size)
+{
+    if (comm_queue_count == 0U)
+        return false;
+
+    *frame_size = comm_queue_sizes[comm_queue_head];
+    memcpy(frame_out, comm_queue[comm_queue_head], *frame_size);
+    comm_queue_head = (uint8_t)((comm_queue_head + 1U) % COMM_QUEUE_DEPTH);
+    comm_queue_count--;
+    return true;
+}
+
+static void enqueue_pending_rx_frame(void)
+{
+    if (CommAv)
+    {
+        if (!comm_queue_push(PCComm, (uint8_t)PCComm[1]))
+            send_ack_to_PC(COMM_CRC_ERROR_OPCODE);
+
+        CommAv = 0;
+        CommPointer = 0;
+        CommStart = 0;
+        MsgSize = 0xFF;
+        app_register_activity();
+    }
+}
+
+static bool is_debug_opcode(uint8_t opcode)
+{
+    switch (opcode)
+    {
+        case 0x18:
+        case 0x24:
+        case 0x25:
+        case 0x27:
+        case 0x30:
+        case 0x32:
+        case 0x37:
+        case 0x38:
+        case 0x39:
+        case 0x41:
+        case 0x42:
+        case 0x45:
+        case 0x46:
+        case 0x47:
+        case 0x48:
+            return true;
+        default:
+            return false;
+    }
+}
+
 static float convert_raw_angle_to_degrees(uint16_t raw_angle_value)
 {
     return (((float)raw_angle_value) / RAW_ANGLE_MAX_COUNT) * RAW_ANGLE_FULL_SCALE_DEG;
@@ -42,7 +112,7 @@ static void print_loaded_table(void)
 {
     uint16_t sel_add;
 
-    for (sel_add = 0; sel_add < TABLE_SIZE; sel_add++)
+    for (sel_add = 0; sel_add < loaded_table_rows; sel_add++)
     {
         sprintf(PCDebug,"%u,%.6f\n", table_data[sel_add].range, table_data[sel_add].angle);
         send_string_UART2(PCDebug);
@@ -107,6 +177,14 @@ static void handle_table_name_write(char *comm)
 
 static char process_comm_opcode(uint8_t opcode, char *comm)
 {
+#ifdef OPERATIONAL
+    if (is_debug_opcode(opcode))
+    {
+        send_ack_to_PC(COMM_CRC_ERROR_OPCODE);
+        return 0;
+    }
+#endif
+
     switch (opcode)
     {
         case 0x15:
@@ -239,16 +317,18 @@ static char process_comm_opcode(uint8_t opcode, char *comm)
 
 void comm_isr(void)
 {
+    char frame[COMM_FRAME_MAX_LEN];
+    uint8_t frame_size = 0U;
+
     if (U2STAbits.OERR == 1)
         U2STAbits.OERR = 0b0;
 
-    if (CommAv)
+    enqueue_pending_rx_frame();
+
+    if (comm_queue_pop(frame, &frame_size))
     {
-        app_register_activity();
-        handle_comm(PCComm);
-        CommAv = 0;
-        CommPointer = 0;
-        CommStart = 0;
+        (void)frame_size;
+        handle_comm(frame);
     }
 }
 

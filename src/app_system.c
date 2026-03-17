@@ -80,15 +80,23 @@ static void power_process(void)
     {
         case POWER_STATE_ACTIVE:
             if (sleep_request_pending || ((activate_sleep != 0U) && ((system_time_ms - sleep_timer) >= SLEEP_TIME)))
+            {
+                power_state_started_ms = system_time_ms;
+                power_state_initialized = false;
                 power_state = POWER_STATE_PREPARE_SLEEP;
+            }
             break;
         case POWER_STATE_PREPARE_SLEEP:
-            configure_button_to_interrupt();
-            LCD_EN = 0;
-            DCDC_nSHDN = 0;
-            open_l_terminal();
-            __delay_ms(100);
-            power_state = POWER_STATE_SLEEPING;
+            if (!power_state_initialized)
+            {
+                power_state_initialized = true;
+                configure_button_to_interrupt();
+                LCD_EN = 0;
+                DCDC_nSHDN = 0;
+                open_l_terminal();
+            }
+            if ((system_time_ms - power_state_started_ms) >= 100U)
+                power_state = POWER_STATE_SLEEPING;
             break;
         case POWER_STATE_SLEEPING:
             enterSleepMode();
@@ -99,8 +107,9 @@ static void power_process(void)
             LCD_EN = 1;
             DCDC_nSHDN = 1;
             clr_pot_sd();
-            SSD13003_SetBrightness((uint8_t)lcd_brightness);
+            restore_runtime_state();
             sleep_request_pending = false;
+            power_state_initialized = false;
             last_tick_count = _CP0_GET_COUNT();
             tick_accumulator = 0U;
             sleep_timer = system_time_ms;
@@ -147,8 +156,16 @@ void all_init(void)
     last_status_ms = 0U;
     last_button_scan_ms = 0U;
     last_roll_animation_ms = 0U;
+    power_state_started_ms = 0U;
     power_state = POWER_STATE_ACTIVE;
+    power_state_initialized = false;
     sleep_request_pending = false;
+    button_one_debounce.raw_level = false;
+    button_one_debounce.stable_level = false;
+    button_one_debounce.transition_started_ms = 0U;
+    button_two_debounce.raw_level = false;
+    button_two_debounce.stable_level = false;
+    button_two_debounce.transition_started_ms = 0U;
 
     lcd_brightness = (int16_t)read_byte_eerpom(BRIGHT_ADD);
     zero_angle = load_cal_angle();
@@ -180,6 +197,18 @@ void all_init(void)
     DCDC_nSHDN = 1;
     activate_sleep = read_byte_eerpom(ACT_SLP);
     sleep_timer = system_time_ms;
+}
+
+void restore_runtime_state(void)
+{
+    SSD13003_Init();
+    SSD13003_ClearDisplay();
+    set_display_drawings();
+    SSD13003_SetBrightness((uint8_t)lcd_brightness);
+    write_str_LCD(TABLE_START_W, TABLE_START_H, table_names[table_num - 1U]);
+    update_battery_status();
+    update_range();
+    update_angle(roll_angle);
 }
 
 uint32_t app_now_ms(void)
@@ -270,8 +299,6 @@ float calibrate_angle(void)
 void goto_sleep(void)
 {
     request_sleep();
-    while (sleep_request_pending || (power_state != POWER_STATE_ACTIVE))
-        power_process();
 }
 
 void configure_button_to_io(void)
