@@ -1,0 +1,262 @@
+VERSION
+8
+
+COMMSETTINGS
+0
+COM31
+COM2
+115200
+2
+63
+4
+0
+0
+
+COMMDISPLAY
+0
+
+VERSATAP
+0
+
+CHANNELALIAS
+
+
+
+SEND
+0
+PING
+16 03 15
+0
+5
+
+SEND
+1
+send row 105 to table 4
+17 0C 04 00 FB 01 1F 00 1F 0C FB 12
+0
+5
+
+SEND
+2
+test eeprom
+18 03 1B
+0
+5
+
+SEND
+3
+read table #1
+19 04 01 1C
+0
+5
+
+SEND
+4
+read table #4
+19 04 04 19
+0
+5
+
+SEND
+5
+read table 4, debug mode
+20 04 04 20
+0
+5
+
+SEND
+6
+read table 1, debug mode
+20 04 01 25
+0
+5
+
+SEND
+7
+write range and ang to table 1 row 5
+21 0C 01 00 05 01 1F 00 1F 0C 05 21
+0
+5
+
+SEND
+8
+ping bytes
+15 03 16
+0
+5
+
+SEND
+9
+read table 2, debug mode
+20 04 02 26
+0
+5
+
+SEND
+10
+write debug row count for table 1 
+24 06 01 00 26 05
+0
+5
+
+SEND
+11
+get  all tables rows count
+25 03 26
+0
+5
+
+SEND
+12
+read table row count - data format 
+26 04 01 23
+0
+5
+
+SEND
+13
+read current table to monitor
+27 03 24
+0
+5
+
+SEND
+14
+calculate range for current angle and send to monitor
+28 03 2B
+0
+5
+
+SEND
+15
+get active tables 
+30 03 33
+0
+5
+
+SEND
+16
+get table names
+32 03 31
+0
+5
+
+SEND
+17
+check table write
+31 08 01 4D 32 33 30 44
+0
+5
+
+SEND
+18
+send to sleep. wake up from button
+33 03 30
+0
+5
+
+SEND
+19
+toggle LCD enable
+34 03 37
+0
+5
+
+SEND
+20
+toggle DC DC nSHDN
+35 03 36
+0
+5
+
+SEND
+21
+set pot to mid range
+36 03 35
+0
+5
+
+SEND
+22
+get lcd brightness
+37 03 34
+0
+5
+
+SEND
+23
+get stat
+38 03 3B
+1
+.7
+
+SEND
+24
+get tables name- pc
+39 03 3A
+0
+5
+
+SEND
+25
+zero sight
+40 03 43
+0
+5
+
+SEND
+26
+read calibrated value
+41 03 42
+0
+5
+
+SEND
+27
+get 100 encoder samples
+42 03 41
+1
+2
+
+SEND
+28
+activate sleep
+43 03 40
+0
+5
+
+SEND
+29
+deactivate sleep
+44 03 47
+0
+5
+
+SEND
+30
+zero spi comm
+45 03 46
+0
+5
+
+SEND
+31
+send text to display
+46 03 45
+0
+5
+
+SEND
+32
+set bat ind
+47 03 44
+0
+5
+
+SEND
+33
+Active Table
+56 03 55
+0
+5
+

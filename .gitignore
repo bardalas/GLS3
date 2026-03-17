@@ -1,0 +1,13 @@
+MEP_SIGHT.X/build/
+MEP_SIGHT.X/debug/
+MEP_SIGHT.X/dist/
+MEP_SIGHT.X/.generated_files/
+MEP_SIGHT.X/queuelogs/
+MEP_SIGHT.X/nbproject/private/
+*.elf
+*.hex
+*.map
+*.o
+*.d
+*.obj
+*.exe
